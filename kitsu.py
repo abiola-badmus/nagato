@@ -29,7 +29,6 @@ def fliter_projects(project):
         if file['project_name'] == project:
             projects.append(file)
     current_project.append(project)
-    print(current_project[0])
     bpy.context.scene.update_tag()
     bpy.app.handlers.depsgraph_update_pre.append(update_list)
 
