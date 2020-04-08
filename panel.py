@@ -2,7 +2,6 @@ import bpy
 import gazu
 import nagato.kitsu
 
-
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
     bl_label = 'Version Control'
     bl_idname = 'SVN_PT_Pysvn'
@@ -48,11 +47,12 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             text = "Task file"
         
         #displays the name of current logging in user
-        try:
-            layout.label(text= f'user: {gazu.user.client.get_current_user()["full_name"]}')
-        except:
-            layout.label(text= f'user: No Logged in user')
-                                 
+        # try:
+        #     layout.label(text= f'user: testing')
+        #     # layout.label(text= f'user: {gazu.user.client.get_current_user()["full_name"]}')
+        # except:
+        #     layout.label(text= f'user: No Logged in user')
+        layout.label(text= f'user: {nagato.kitsu.current_user[0]}')                         
         row = layout.row()
         coll = row.column()
         coll.operator('nagato.login')   

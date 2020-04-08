@@ -8,6 +8,7 @@ from bpy.types import (
 from bpy.props import (StringProperty)
 import pysvn
 import gazu
+import nagato.kitsu
 
 ########## operators ################################
 client = pysvn.Client()
@@ -19,12 +20,7 @@ class OBJECT_OT_NagatoAdd(Operator):
     
     @classmethod
     def poll(cls, context):
-        try:
-            gazu.user.client.get_current_user()["full_name"]
-            status = True
-        except:
-            status = False
-        return status == True
+        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):  
@@ -59,12 +55,7 @@ class OBJECT_OT_NagatoPublish(Operator):
     
     @classmethod
     def poll(cls, context):
-        try:
-            gazu.user.client.get_current_user()["full_name"]
-            status = True
-        except:
-            status = False
-        return status == True
+        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):
@@ -97,12 +88,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
     
     @classmethod
     def poll(cls, context):
-        try:
-            gazu.user.client.get_current_user()["full_name"]
-            status = True
-        except:
-            status = False
-        return status == True
+        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):

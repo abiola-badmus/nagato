@@ -3,6 +3,7 @@ import os
 import gazu
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
+current_user = ['NOT LOGGED IN']
 todo = []
 projects = []
 filtered_todo = []
@@ -131,12 +132,7 @@ class NAGATO_OT_Login(Operator):
     
     @classmethod
     def poll(cls, context):
-        try:
-            gazu.user.client.get_current_user()
-            status = 1
-        except:
-            status = 0
-        return status == 0
+        return  current_user[0] == 'NOT LOGGED IN'
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -151,24 +147,30 @@ class NAGATO_OT_Login(Operator):
         # bpy.app.handlers.depsgraph_update_pre.append(update_list)
         # self.report({'INFO'}, f"logged in as {name}")
         try:
+            current_user.clear()
             bpy.ops.nagato.set_host()
             gazu.log_in(self.user_name, self.password)
-            name = gazu.user.client.get_current_user()['full_name']
+            current_user.append(gazu.user.client.get_current_user()["full_name"])
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
             bpy.app.handlers.depsgraph_update_pre.append(update_list)
-            self.report({'INFO'}, f"logged in as {name}")
+            self.report({'INFO'}, f"logged in as {current_user}")
         except gazu.exception.AuthFailedException:
             self.report({'WARNING'}, 'wrong credecials')
+            current_user.append('NOT LOGGED IN')
         except gazu.exception.ParameterException:
             self.report({'WARNING'}, 'wrong credecials')
+            current_user.append('NOT LOGGED IN')
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
+            current_user.append('NOT LOGGED IN')
         except gazu.exception.MethodNotAllowedException:
             self.report({'WARNING'}, 'invalid host url')
+            current_user.append('NOT LOGGED IN')
         except Exception:
             self.report({'WARNING'}, 'something went wrong')
+            current_user.append('NOT LOGGED IN')
         return{'FINISHED'}
 
 
