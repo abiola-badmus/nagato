@@ -4,12 +4,23 @@ Nagato is a Blender add-on to manage animation production tasks with [CG-wire's]
 
 ## Dependences
 
-This add-on requires two python libraries to work; CG-wire [Gazu](https://github.com/cgwire/gazu) and [Pysvn](https://pysvn.sourceforge.io/).
+This add-on requires two python libraries to work; CG-wire Gazu and Pysvn.
 
 Gazu is a Python client for the Kitsu API. To install it, follow instructions [here](https://github.com/cgwire/gazu).
 
-[Pysvn](https://pysvn.sourceforge.io/) is the python interface to Subversion. For installation instructions, please go [here](https://pysvn.sourceforge.io/downloads.html).
+Pysvn is the python interface to Subversion. For installation instructions, please go [here](https://pysvn.sourceforge.io/downloads.html).
 
+If you're on a Windows machine, after installation you will need to copy/move the 'gazu' and 'pysvn' folders from the system wide python 'site-packages' directory at
+
+```bash
+C:/Users/user/AppData/Local/Programs/Python/Python37/Lib/site-packages
+```
+
+...into Blender's python 'site-packages' directory at
+
+```bash
+C:/Program Files/Blender Foundation/Blender 2.8x/2.8x/python/lib/site-packages
+```
 
 ## Installation
 
