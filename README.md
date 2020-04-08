@@ -13,6 +13,8 @@ Gazu is a Python client for the Kitsu API. To install it, follow instructions [h
 
 ## Installation
 
+Download the add-on from [here](https://drive.google.com/file/d/1GKjB5AqEjCchg9wM1BTh4JAuQ_a5atku/view?usp=sharing).
+
 Install it like you would any blender add-on. Click on 'Install' and locate the zip archive. 
 
 After installation, enter the url of your kitsu server api. It should be something like 
