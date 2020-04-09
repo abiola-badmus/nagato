@@ -36,7 +36,6 @@ def move_dependecies():
     shutil.copytree(directory_gazu, destination_gazu)
 
 def register():
-    move_dependecies()
     for currentModuleName in modulesFullNames.values():
         if currentModuleName in sys.modules:
             if hasattr(sys.modules[currentModuleName], 'register'):
@@ -51,4 +50,5 @@ def unregister():
                 sys.modules[currentModuleName].unregister()
  
 if __name__ == "__main__":
+    move_dependecies()
     register()
