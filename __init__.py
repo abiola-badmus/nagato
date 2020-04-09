@@ -15,7 +15,27 @@ import bpy
 import sys
 import importlib
 import shutil
- 
+import ctypes
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+def move_dependecies():
+    try:
+        destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
+        destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
+        directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
+        directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
+        shutil.copytree(directory_pysvn, destination_pysvn)
+        shutil.copytree(directory_gazu, destination_gazu)
+    except FileExistsError:
+        pass
+
+
+
+move_dependecies()
+
 modulesFullNames = {}
 for currentModuleName in modulesNames:
     modulesFullNames[currentModuleName] = ('{}.{}'.format(__name__, currentModuleName))
@@ -26,14 +46,6 @@ for currentModuleFullName in modulesFullNames.values():
     else:
         globals()[currentModuleFullName] = importlib.import_module(currentModuleFullName)
         setattr(globals()[currentModuleFullName], 'modulesNames', modulesFullNames)
-
-def move_dependecies():
-    destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
-    destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
-    directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
-    directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
-    shutil.copytree(directory_pysvn, destination_pysvn)
-    shutil.copytree(directory_gazu, destination_gazu)
 
 def register():
     for currentModuleName in modulesFullNames.values():
@@ -50,5 +62,4 @@ def unregister():
                 sys.modules[currentModuleName].unregister()
  
 if __name__ == "__main__":
-    move_dependecies()
     register()
