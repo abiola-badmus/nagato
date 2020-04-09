@@ -26,18 +26,22 @@ for currentModuleFullName in modulesFullNames.values():
     else:
         globals()[currentModuleFullName] = importlib.import_module(currentModuleFullName)
         setattr(globals()[currentModuleFullName], 'modulesNames', modulesFullNames)
- 
-def register():
-    for currentModuleName in modulesFullNames.values():
-        if currentModuleName in sys.modules:
-            if hasattr(sys.modules[currentModuleName], 'register'):
-                sys.modules[currentModuleName].register()
+
+def move_dependecies():
     destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
     destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
     directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
     directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
     shutil.copytree(directory_pysvn, destination_pysvn)
     shutil.copytree(directory_gazu, destination_gazu)
+
+def register():
+    move_dependecies()
+    for currentModuleName in modulesFullNames.values():
+        if currentModuleName in sys.modules:
+            if hasattr(sys.modules[currentModuleName], 'register'):
+                sys.modules[currentModuleName].register()
+    
 
  
 def unregister():
