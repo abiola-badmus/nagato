@@ -34,8 +34,8 @@ def register():
                 sys.modules[currentModuleName].register()
     destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
     destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
-    directory_pysvn = bpy.utils.script_path_user() + '/nagato/pysvn'
-    directory_gazu = bpy.utils.script_path_user() + '/nagato/gazu'
+    directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
+    directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
     shutil.copytree(directory_pysvn, destination_pysvn)
     shutil.copytree(directory_gazu, destination_gazu)
 
