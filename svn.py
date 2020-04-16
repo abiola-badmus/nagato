@@ -1,4 +1,5 @@
 import bpy
+import os
 from bpy.types import (
     Operator,
     Panel,
@@ -102,6 +103,55 @@ class OBJECT_OT_NagatoUpdate(Operator):
         return{'FINISHED'}
 
 
+class OBJECT_OT_NagatoCheckOut(Operator):
+    bl_label = 'Check Out'
+    bl_idname = 'nagato.check_out'
+    bl_description = 'checkout project files'
+    
+    user = os.environ.get('homepath')
+    user_f = user.replace("\\","/")
+    file_path = 'C:' + user_f
+    
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+
+    repo_url: StringProperty(
+        name = 'repository url',
+        default = 'http://',
+        description = 'repository location'
+        )
+    
+    directory: StringProperty(
+        name = 'directory',
+        default = file_path,
+        description = 'checkout directory'
+        )
+        
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+    
+    @classmethod
+    def poll(cls, context):
+        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
+
+
+    def execute(self, context):
+        client.set_default_username(self.username)
+        client.set_default_password(self.password)
+        client.checkout(self.repo_url, self.directory)
+        return{'FINISHED'}
+
+
 class OBJECT_OT_ConsolidateMaps(Operator):
     bl_label = 'Consolidate'
     bl_idname = 'nagato.consolidate'
@@ -160,6 +210,7 @@ classes = [
     OBJECT_OT_NagatoAdd,
     OBJECT_OT_NagatoPublish,
     OBJECT_OT_NagatoUpdate,
+    OBJECT_OT_NagatoCheckOut,
     OBJECT_OT_ConsolidateMaps
 ]
         

@@ -22,6 +22,8 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
         col.operator('nagato.publish')
         col.operator('nagato.update')
         row = layout.row()
+        row.operator('nagato.check_out', text= 'check out files')
+        row = layout.row()
         row.operator('nagato.consolidate', text= 'consolidate maps')
         
 
