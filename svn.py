@@ -9,7 +9,12 @@ from bpy.types import (
 from bpy.props import (StringProperty)
 import pysvn
 import gazu
-import nagato.kitsu
+from . import kitsu
+
+# if len(nagato.kitsu.current_project) != 0:
+    # url = 
+# else:
+#     url = 'no'
 
 ########## operators ################################
 client = pysvn.Client()
@@ -21,7 +26,7 @@ class OBJECT_OT_NagatoAdd(Operator):
     
     @classmethod
     def poll(cls, context):
-        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):  
@@ -56,15 +61,12 @@ class OBJECT_OT_NagatoPublish(Operator):
     
     @classmethod
     def poll(cls, context):
-        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):
         bpy.ops.wm.save_mainfile()
-        try:
-            user = gazu.user.client.get_current_user()["full_name"]
-        except:
-            user = "No Logged in user"
+        user = kitsu.current_user[0]
         
         try:
             client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
@@ -89,7 +91,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
     
     @classmethod
     def poll(cls, context):
-        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
 
 
     def execute(self, context):
@@ -108,10 +110,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     bl_idname = 'nagato.check_out'
     bl_description = 'checkout project files'
     
-    user = os.environ.get('homepath')
-    user_f = user.replace("\\","/")
-    file_path = 'C:' + user_f
-    
+
     username: StringProperty(
         name = 'Username',
         default = 'username',
@@ -125,30 +124,49 @@ class OBJECT_OT_NagatoCheckOut(Operator):
         description = 'input your svn password'
         )
 
-    repo_url: StringProperty(
-        name = 'repository url',
-        default = 'http://',
-        description = 'repository location'
-        )
+    # repo_url: StringProperty(
+    #     name = 'repository url',
+    #     default = kitsu.url[0],
+    #     # if len(nagato.kitsu.current_project) != 0 else '',
+    #     description = 'repository location'
+    #     )
     
-    directory: StringProperty(
-        name = 'directory',
-        default = file_path,
-        description = 'checkout directory'
-        )
+    # directory: StringProperty(
+    #     name = 'directory',
+    #     default = file_path,
+    #     description = 'checkout directory'
+    #     )
         
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
     
     @classmethod
     def poll(cls, context):
-        return  nagato.kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
 
 
     def execute(self, context):
+        # if len(kitsu.current_project) != 0:
+        project_info = gazu.project.get_project_by_name(kitsu.current_project[0])
+        repo_url = project_info['data']['repository_url']
+        user = os.environ.get('homepath')
+        user_f = user.replace("\\","/")
+        file_path = 'C:' + user_f + '/projects/' + kitsu.current_project[0]
+        print(file_path)  
         client.set_default_username(self.username)
         client.set_default_password(self.password)
-        client.checkout(self.repo_url, self.directory)
+        if os.path.isdir(file_path) == False:
+            os.mkdir(file_path)
+            try:
+                client.checkout(repo_url, file_path)
+                self.report({'INFO'}, "project files downloaded")
+            except pysvn._pysvn_3_7.ClientError as e:
+                self.report({'WARNING'}, str(e))
+        elif os.path.isdir(file_path + '/.svn') == True:
+            bpy.ops.nagato.update()
+            self.report({'INFO'}, "project file updated")
+        else:
+            self.report({'WARNING'}, "Directory is not empty and not under version control")
         return{'FINISHED'}
 
 

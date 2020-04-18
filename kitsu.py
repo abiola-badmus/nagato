@@ -18,6 +18,7 @@ current_project = []
 current_filter = []
 current_status = []
 
+
 ########################### FUNCTIONS ################################
 def fliter_projects(project):
     current_project.clear()
@@ -180,6 +181,8 @@ class NAGATO_OT_Refresh(Operator):
     bl_description = 'refresh kitsu data'    
 
     def execute(self, context):
+        print(current_project)
+        print(len(current_project))
         todo.clear()
         task_tpyes.clear()
         project_names.clear()
