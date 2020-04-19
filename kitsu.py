@@ -402,6 +402,8 @@ class NAGATO_OT_UpdateStatus(Operator):
     def execute(self, context):
         task_list_index = bpy.context.scene.col_idx
         gazu.task.add_comment(filtered_todo[task_list_index]['id'], status_name[0], self.comment)
+        if status_name[0]['short_name'] == 'wfa':
+            bpy.ops.nagato.publish()
         displayed_tasks[task_list_index][1] = status_name[0]['short_name']
         for item in todo:
             if item['id'] == filtered_todo[task_list_index]['id']:
@@ -409,9 +411,9 @@ class NAGATO_OT_UpdateStatus(Operator):
         for item in projects:
             if item['id'] == filtered_todo[task_list_index]['id']:
                 item['task_status_short_name'] = status_name[0]['short_name']  
-        print(filtered_todo[task_list_index])
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
+        self.report({'INFO'}, "status updated")
         return{'FINISHED'}
 
 ######################################### Menu ################################################################################

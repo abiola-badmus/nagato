@@ -151,12 +151,21 @@ class OBJECT_OT_NagatoCheckOut(Operator):
         repo_url = project_info['data']['repository_url']
         user = os.environ.get('homepath')
         user_f = user.replace("\\","/")
-        file_path = 'C:' + user_f + '/projects/' + kitsu.current_project[0]
+        mount_point = 'C:' + user_f + '/projects/'
+        file_path = mount_point + kitsu.current_project[0]
         print(file_path)  
         client.set_default_username(self.username)
         client.set_default_password(self.password)
+        if os.path.isdir(mount_point) == False:
+            os.mkdir(mount_point)
         if os.path.isdir(file_path) == False:
             os.mkdir(file_path)
+            try:
+                client.checkout(repo_url, file_path)
+                self.report({'INFO'}, "project files downloaded")
+            except pysvn._pysvn_3_7.ClientError as e:
+                self.report({'WARNING'}, str(e))
+        elif len(os.listdir(file_path)) == 0:
             try:
                 client.checkout(repo_url, file_path)
                 self.report({'INFO'}, "project files downloaded")
