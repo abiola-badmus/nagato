@@ -4,9 +4,11 @@ Nagato is a Blender add-on to manage animation production tasks with [CG-wire's]
 
 ## Installation
 
-Download the add-on from [here](https://drive.google.com/open?id=1RtmnBxgutSOtcwkHQBuVtGTUIkB6toyr).
+Download the add-on from [here](https://gumroad.com/l/xVnjW).
 
-Install it like you would any blender add-on. Click on 'Install' and locate the zip archive. If you intend to use SVN, also install the CollabnetClient in the folder. 
+Install it like you would any blender add-on. Click on 'Install' and locate the zip archive. 
+
+If you intend to use SVN, also install the CollabnetClient from [here](https://www.collab.net/downloads/subversion-1-12-2-windows-64-bit). This will install the Subversion command-line binaries. 
 
 After installation, enter the url of your kitsu server api. It should be something like 
 
