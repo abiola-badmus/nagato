@@ -10,7 +10,7 @@ bl_info = {
     "category": "Version Control/Project Management",
 }
 
-modulesNames = ['svn', 'panel', 'kitsu']
+modulesNames = ['svn', 'ui', 'kitsu', 'genesis']
 import bpy
 import sys
 import importlib

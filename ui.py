@@ -1,6 +1,8 @@
 import bpy
 import gazu
 import nagato.kitsu
+from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
+from bpy.props import (StringProperty, IntProperty)
 
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
     bl_label = 'Version Control'
@@ -111,12 +113,34 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         row = layout.row()
         row.enabled = text == "Task file"
         row.operator('nagato.update_status')
-        
+
+
+#####preferences###################################
+class NagatoGenesis(bpy.types.AddonPreferences):
+    # this must match the add-on name, use '__package__'
+    # when defining this in a submodule of a python package.
+    bl_idname = 'nagato'
+
+    host_url: StringProperty(
+        name="Url of server",
+        default='',
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        # layout.label(text="Nagato Preferences")
+        layout.prop(self, "host_url")
+        layout.operator('nagato.login')
+        layout.operator('nagato.genesis')
+        # layout.operator('nagato.set_host')
+
 # registration
 def register():
     bpy.utils.register_class(NAGATO_PT_TaskManagementPanel)
     bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
+    bpy.utils.register_class(NagatoGenesis)
 
 def unregister():
     bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)
     bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
+    bpy.utils.unregister_class(NagatoGenesis)

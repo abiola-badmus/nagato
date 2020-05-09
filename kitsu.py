@@ -66,21 +66,21 @@ def update_list(scene):
 
 
 ############################## Addon preference to set host ####################################
-class NagatoSetHost(bpy.types.AddonPreferences):
-    # this must match the add-on name, use '__package__'
-    # when defining this in a submodule of a python package.
-    bl_idname = 'nagato'
+# class NagatoSetHost(bpy.types.AddonPreferences):
+#     # this must match the add-on name, use '__package__'
+#     # when defining this in a submodule of a python package.
+#     bl_idname = 'nagato'
 
-    host_url: StringProperty(
-        name="Url of server",
-        default='',
-    )
+#     host_url: StringProperty(
+#         name="Url of server",
+#         default='',
+#     )
 
-    def draw(self, context):
-        layout = self.layout
-        # layout.label(text="Nagato Preferences")
-        layout.prop(self, "host_url")
-        # layout.operator('nagato.set_host')
+#     def draw(self, context):
+#         layout = self.layout
+#         # layout.label(text="Nagato Preferences")
+#         layout.prop(self, "host_url")
+#         # layout.operator('nagato.set_host')
 
 
 ############################ Property groups #####################################################
@@ -448,7 +448,7 @@ class NAGATO_MT_FilterTask(Menu):
        
 ############### all classes ####################    
 classes = [
-        NagatoSetHost,
+        #NagatoSetHost,
         NAGATO_OT_SetHost,
         NAGATO_OT_Login,
         NAGATO_OT_Refresh,
