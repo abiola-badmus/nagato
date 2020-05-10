@@ -81,7 +81,7 @@ class NAGATO_OT_Genesis(Operator):
                 char_file = chars_path + '/' + char_name + '.blend'
                 shutil.copy('util/genesis.blend', chars_path)
                 os.rename(chars_path + '/genesis.blend', char_file)
-                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b "{char_file}" --python "util/setup.py"', None, 1)
+                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b --factory-startup "{char_file}" --python "util/setup.py"', None, 1)
                 while os.path.isfile(char_file + '1') == False:
                     pass
                 os.remove(char_file + '1')
@@ -92,7 +92,7 @@ class NAGATO_OT_Genesis(Operator):
                 env_file = envs_path + '/' + env_name + '.blend'
                 shutil.copy('util/genesis.blend', envs_path)
                 os.rename(envs_path + '/genesis.blend', env_file)
-                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b "{env_file}" --python "util/setup.py"', None, 1)
+                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b --factory-startup "{env_file}" --python "util/setup.py"', None, 1)
                 while os.path.isfile(env_file + '1') == False:
                     pass
                 os.remove(env_file + '1')
@@ -103,7 +103,7 @@ class NAGATO_OT_Genesis(Operator):
                 prop_file = props_path + '/' + prop_name + '.blend'
                 shutil.copy('util/genesis.blend', props_path)
                 os.rename(props_path + '/genesis.blend', prop_file)
-                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b "{prop_file}" --python "util/setup.py"', None, 1)
+                ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f' -b --factory-startup "{prop_file}" --python "util/setup.py"', None, 1)
                 while os.path.isfile(prop_file + '1') == False:
                     pass
                 os.remove(prop_file + '1')
@@ -143,7 +143,7 @@ class NAGATO_OT_Genesis(Operator):
                                 cast_data.append({'filepath': props_path + cast['asset_name'] + '.blend', 'filename': cast['asset_name']})
                         with open('cast_data.json', 'w') as data:
                             json.dump(cast_data, data, indent=2)
-                        ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f'-b "{shot_file_name_task}" --python "util/scenes_setup.py"', None, 1)
+                        ctypes.windll.shell32.ShellExecuteW(None, "open", blender, f'-b --factory-startup "{shot_file_name_task}" --python "util/scenes_setup.py"', None, 1)
                         # ctypes.windll.shell32.ShellExecuteW(None, "open", blender,
                         #                                     f' -b "{shot_file_name_task}" --python "./scenes_setup.py"', None, 1)
                         while os.path.isfile(shot_file_name_task + '1') == False:
