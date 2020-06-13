@@ -271,7 +271,7 @@ class NAGATO_OT_OpenFile(Operator):
             directory = file_path + '_layout.blend'
         elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'layout':
             directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'anim':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() in ['anim', 'animation']:
             directory = file_path + '_anim.blend'
         else:
             directory = file_path + '.blend'
