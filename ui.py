@@ -131,8 +131,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         # layout.label(text="Nagato Preferences")
         layout.prop(self, "host_url")
         layout.operator('nagato.login')
-        layout.operator('nagato.genesis')
-        # layout.operator('nagato.set_host')
+
 
 # registration
 def register():
