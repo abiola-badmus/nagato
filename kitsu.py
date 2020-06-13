@@ -1,6 +1,8 @@
 import bpy
 import os
 import gazu
+from gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
+from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
 current_user = ['NOT LOGGED IN']
@@ -140,13 +142,6 @@ class NAGATO_OT_Login(Operator):
     
     
     def execute(self, context):
-        # gazu.log_in(self.user_name, self.password)
-        # name = gazu.user.client.get_current_user()['full_name']
-        # displayed_tasks.clear()
-        # bpy.ops.nagato.refresh()
-        # bpy.context.scene.update_tag()
-        # bpy.app.handlers.depsgraph_update_pre.append(update_list)
-        # self.report({'INFO'}, f"logged in as {name}")
         try:
             current_user.clear()
             bpy.ops.nagato.set_host()
@@ -157,20 +152,19 @@ class NAGATO_OT_Login(Operator):
             bpy.context.scene.update_tag()
             bpy.app.handlers.depsgraph_update_pre.append(update_list)
             self.report({'INFO'}, f"logged in as {current_user}")
-        except gazu.exception.AuthFailedException:
+        except (NotAuthenticatedException, ServerErrorException, ParameterException):
             self.report({'WARNING'}, 'wrong credecials')
             current_user.append('NOT LOGGED IN')
-        except gazu.exception.ParameterException:
-            self.report({'WARNING'}, 'wrong credecials')
-            current_user.append('NOT LOGGED IN')
+        except (MissingSchema, InvalidSchema, ConnectionError) as err:
+            self.report({'WARNING'}, str(err))
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
             current_user.append('NOT LOGGED IN')
-        except gazu.exception.MethodNotAllowedException:
+        except (MethodNotAllowedException, RouteNotFoundException):
             self.report({'WARNING'}, 'invalid host url')
             current_user.append('NOT LOGGED IN')
         except Exception:
-            self.report({'WARNING'}, 'something went wrong')
+            self.report({'WARNING'}, 'something went wrong.')
             current_user.append('NOT LOGGED IN')
         return{'FINISHED'}
 
@@ -269,15 +263,15 @@ class NAGATO_OT_OpenFile(Operator):
         user_f = user.replace("\\","/")
         file_path = 'C:' + user_f + gazu.files.build_working_file_path(active_id)
         
-        if filtered_todo[task_list_index]['task_type_name'] == 'lighting':
+        if filtered_todo[task_list_index]['task_type_name'].casefold() == 'lighting':
             directory = file_path + '_lighting.blend'
-        elif filtered_todo[task_list_index]['task_type_name'] == 'rendering':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'rendering':
             directory = file_path + '_lighting.blend'
-        elif filtered_todo[task_list_index]['task_type_name'] == 'previz':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'previz':
             directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'] == 'layout':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'layout':
             directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'] == 'anim':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'anim':
             directory = file_path + '_anim.blend'
         else:
             directory = file_path + '.blend'

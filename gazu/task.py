@@ -561,13 +561,15 @@ def remove_comment(comment):
     return client.delete("data/comments/%s" % comment["id"])
 
 
-def create_preview(task, comment):
+def add_preview(task, comment, preview_file_path):
     """
-    Create a preview into given comment.
+    Add a preview to given comment. It it's a movie, it must be mentioned
+    in the option.
 
     Args:
         task (str / dict): The task dict or the task ID.
         comment (str / dict): The comment or the comment ID.
+        preview_file_path (str): Path of the file to upload as preview.
 
     Returns:
         dict: Created preview file model.
@@ -578,50 +580,29 @@ def create_preview(task, comment):
         task["id"],
         comment["id"],
     )
-    return client.post(path, {})
-
-
-def upload_preview_file(preview, file_path):
-    """
-    Create a preview into given comment.
-
-    Args:
-        task (str / dict): The task dict or the task ID.
-        file_path (str): Path of the file to upload as preview.
-    """
-    path = "pictures/preview-files/%s" % preview["id"]
-    client.upload(path, file_path)
-
-
-def add_preview(task, comment, preview_file_path):
-    """
-    Add a preview to given comment.
-
-    Args:
-        task (str / dict): The task dict or the task ID.
-        comment (str / dict): The comment or the comment ID.
-        preview_file_path (str): Path of the file to upload as preview.
-
-    Returns:
-        dict: Created preview file model.
-    """
-    preview_file = create_preview(task, comment)
-    upload_preview_file(preview_file, preview_file_path)
+    preview_file = client.post(path, {})
+    path = "pictures/preview-files/%s" % preview_file["id"]
+    client.upload(path, preview_file_path)
     return preview_file
 
 
-def set_main_preview(preview_file):
+def set_main_preview(entity, preview_file):
     """
     Set given preview as thumbnail of given entity.
 
     Args:
+        task (str / dict): The task dict or the task ID.
         preview_file (str / dict): The preview file dict or ID.
 
     Returns:
         dict: Created preview file model.
     """
+    entity = normalize_model_parameter(entity)
     preview_file = normalize_model_parameter(preview_file)
-    path = "actions/preview-files/%s/set-main-preview" % preview_file["id"]
+    path = "actions/entities/%s/set-main-preview/%s" % (
+        entity["id"],
+        preview_file["id"],
+    )
     return client.put(path, {})
 
 
