@@ -16,6 +16,8 @@ import sys
 import importlib
 import shutil
 import ctypes
+import filecmp
+import os.path
 
 
 def is_admin():
@@ -25,36 +27,56 @@ def is_admin():
         return False
 
 # moves pysvn and gazu to blenders python directory
-def move_dependecies():
-    if is_admin():
-        try:
-            directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
-            destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
-            shutil.copytree(directory_pysvn, destination_pysvn)
-        except FileExistsError:
-            pass
+def are_dir_trees_equal(dir1, dir2):
+    """
+    Compare two directories recursively. Files in each directory are
+    assumed to be equal if their names and contents are equal.
 
-        try:
-            directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
-            destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
-            shutil.copytree(directory_gazu, destination_gazu)
-        except FileExistsError:
-            pass
+    @param dir1: First directory path
+    @param dir2: Second directory path
+
+    @return: True if the directory trees are the same and 
+        there were no errors while accessing the directories or files, 
+        False otherwise.
+   """
+    print('runing')
+    dirs_cmp = filecmp.dircmp(dir1, dir2)
+    if len(dirs_cmp.left_only)>0 or len(dirs_cmp.right_only)>0 or \
+        len(dirs_cmp.funny_files)>0:
+        return False
+    (_, mismatch, errors) =  filecmp.cmpfiles(
+        dir1, dir2, dirs_cmp.common_files, shallow=False)
+    if len(mismatch)>0 or len(errors)>0:
+        return False
+    for common_dir in dirs_cmp.common_dirs:
+        new_dir1 = os.path.join(dir1, common_dir)
+        new_dir2 = os.path.join(dir2, common_dir)
+        if not are_dir_trees_equal(new_dir1, new_dir2):
+            return False
+    return True
+
+
+def dependecy(directory, destination):
+    try:
+        if are_dir_trees_equal(directory, destination) is False:
+            shutil.rmtree(destination)
+            shutil.copytree(directory, destination)
+    except FileNotFoundError:
+        shutil.copytree(directory, destination)
+
+
+def move_dependecies():
+    directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
+    destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
+    directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
+    destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
+    if is_admin():
+        dependecy(directory_pysvn, destination_pysvn)
+        dependecy(directory_gazu, destination_gazu)
     else:
         try:
-            try:
-                directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
-                destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
-                shutil.copytree(directory_pysvn, destination_pysvn)
-            except FileExistsError:
-                pass
-
-            try:
-                directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
-                destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
-                shutil.copytree(directory_gazu, destination_gazu)
-            except FileExistsError:
-                pass
+            dependecy(directory_pysvn, destination_pysvn)
+            dependecy(directory_gazu, destination_gazu)
         except PermissionError:
             loc = sys.executable
             py_loc = bpy.utils.script_path_user() + '/addons/nagato/util/activate.py'
