@@ -3,6 +3,7 @@ import gazu
 import nagato.kitsu
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
+import os
 
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
     bl_label = 'Version Control'
@@ -120,16 +121,22 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = 'nagato'
-
+    user = os.environ.get('homepath').replace("\\","/")
     host_url: StringProperty(
         name="Url of server",
         default='',
+    )
+
+    project_mount_point: StringProperty(
+        name="Project file mounting point",
+        default='C:' + user,
     )
 
     def draw(self, context):
         layout = self.layout
         # layout.label(text="Nagato Preferences")
         layout.prop(self, "host_url")
+        layout.prop(self, "project_mount_point")
         layout.operator('nagato.login')
 
 

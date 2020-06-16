@@ -258,11 +258,11 @@ class NAGATO_OT_OpenFile(Operator):
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
+        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
         task_list_index = bpy.context.scene.col_idx
         active_id = filtered_todo[task_list_index]['id']
-        user = os.environ.get('homepath')
-        user_f = user.replace("\\","/")
-        file_path = 'C:' + user_f + gazu.files.build_working_file_path(active_id)
+        # user = os.environ.get('homepath').replace("\\","/")
+        file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
         
         if filtered_todo[task_list_index]['task_type_name'].casefold() == 'lighting':
             directory = file_path + '_lighting.blend'
@@ -324,7 +324,6 @@ class NAGATO_OT_UpdateStatus(Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
     
-
     def draw(self, context):
         task_list_index = bpy.context.scene.col_idx
         task_type = filtered_todo[task_list_index]['task_type_name']
@@ -378,21 +377,6 @@ class NAGATO_OT_UpdateStatus(Operator):
             status_label = current_status[0]
         row.menu("nagato.select_status", text= status_label)
         row.prop(self, "comment")
-
-
-    # @classmethod
-    # def poll(cls, context):
-    #     if len(status_name) == 0:
-    #         s = 1
-    #     else:
-    #         s = 0
-    #     return s == 0
-    #     # try:
-    #     #     status_name[0]
-    #     #     s = 0
-    #     # except:
-    #     #     s = 1
-    #     # return s ==1
 
     def execute(self, context):
         try:
