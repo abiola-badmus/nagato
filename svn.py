@@ -105,6 +105,31 @@ class OBJECT_OT_NagatoUpdate(Operator):
         return{'FINISHED'}
 
 
+class OBJECT_OT_NagatoUpdateAll(Operator):
+    bl_label = 'Update all file'
+    bl_idname = 'nagato.update_all'
+    bl_description = 'Update all files in project repository'
+    
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
+
+
+    def execute(self, context):
+        user = os.environ.get('homepath')
+        user_f = user.replace("\\","/")
+        mount_point = 'C:' + user_f + '/projects/'
+        project = mount_point + kitsu.current_project[0]
+        for file in os.listdir(project):
+            try:
+                client.update(os.path.join(project, file))
+                bpy.ops.wm.revert_mainfile()
+                self.report({'INFO'}, "Update Successful")
+            except pysvn._pysvn_3_7.ClientError:
+                pass
+        return{'FINISHED'}
+
+
 class OBJECT_OT_NagatoCheckOut(Operator):
     bl_label = 'Check Out'
     bl_idname = 'nagato.check_out'
@@ -172,7 +197,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
             except pysvn._pysvn_3_7.ClientError as e:
                 self.report({'WARNING'}, str(e))
         elif os.path.isdir(file_path + '/.svn') == True:
-            bpy.ops.nagato.update()
+            bpy.ops.nagato.update_all()
             self.report({'INFO'}, "project file updated")
         else:
             self.report({'WARNING'}, "Directory is not empty and not under version control")
@@ -237,6 +262,7 @@ classes = [
     OBJECT_OT_NagatoAdd,
     OBJECT_OT_NagatoPublish,
     OBJECT_OT_NagatoUpdate,
+    OBJECT_OT_NagatoUpdateAll,
     OBJECT_OT_NagatoCheckOut,
     OBJECT_OT_ConsolidateMaps
 ]
