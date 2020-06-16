@@ -157,6 +157,7 @@ class NAGATO_OT_Login(Operator):
             current_user.append('NOT LOGGED IN')
         except (MissingSchema, InvalidSchema, ConnectionError) as err:
             self.report({'WARNING'}, str(err))
+            current_user.append('NOT LOGGED IN')
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
             current_user.append('NOT LOGGED IN')
@@ -394,20 +395,23 @@ class NAGATO_OT_UpdateStatus(Operator):
     #     # return s ==1
 
     def execute(self, context):
-        task_list_index = bpy.context.scene.col_idx
-        gazu.task.add_comment(filtered_todo[task_list_index]['id'], status_name[0], self.comment)
-        if status_name[0]['short_name'] == 'wfa':
-            bpy.ops.nagato.publish()
-        displayed_tasks[task_list_index][1] = status_name[0]['short_name']
-        for item in todo:
-            if item['id'] == filtered_todo[task_list_index]['id']:
-                item['task_status_short_name'] = status_name[0]['short_name']
-        for item in projects:
-            if item['id'] == filtered_todo[task_list_index]['id']:
-                item['task_status_short_name'] = status_name[0]['short_name']  
-        bpy.context.scene.update_tag()
-        bpy.app.handlers.depsgraph_update_pre.append(update_list)
-        self.report({'INFO'}, "status updated")
+        try:
+            task_list_index = bpy.context.scene.col_idx
+            gazu.task.add_comment(filtered_todo[task_list_index]['id'], status_name[0], self.comment)
+            if status_name[0]['short_name'] == 'wfa':
+                bpy.ops.nagato.publish()
+            displayed_tasks[task_list_index][1] = status_name[0]['short_name']
+            for item in todo:
+                if item['id'] == filtered_todo[task_list_index]['id']:
+                    item['task_status_short_name'] = status_name[0]['short_name']
+            for item in projects:
+                if item['id'] == filtered_todo[task_list_index]['id']:
+                    item['task_status_short_name'] = status_name[0]['short_name']  
+            bpy.context.scene.update_tag()
+            bpy.app.handlers.depsgraph_update_pre.append(update_list)
+            self.report({'INFO'}, "status updated")
+        except IndexError:
+            self.report({'WARNING'}, "No status selected.")
         return{'FINISHED'}
 
 ######################################### Menu ################################################################################
