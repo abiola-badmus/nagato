@@ -6,6 +6,7 @@ from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
 current_user = ['NOT LOGGED IN']
+remote_host = ['None']
 todo = []
 projects = []
 filtered_todo = []
@@ -67,24 +68,6 @@ def update_list(scene):
         colection.tasks_stat = tasks_stat  
 
 
-############################## Addon preference to set host ####################################
-# class NagatoSetHost(bpy.types.AddonPreferences):
-#     # this must match the add-on name, use '__package__'
-#     # when defining this in a submodule of a python package.
-#     bl_idname = 'nagato'
-
-#     host_url: StringProperty(
-#         name="Url of server",
-#         default='',
-#     )
-
-#     def draw(self, context):
-#         layout = self.layout
-#         # layout.label(text="Nagato Preferences")
-#         layout.prop(self, "host_url")
-#         # layout.operator('nagato.set_host')
-
-
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
      tasks : StringProperty()
@@ -102,13 +85,25 @@ class TASKS_UL_list(bpy.types.UIList):
             pass
 ############## Operators #######################################
 
-class NAGATO_OT_SetHost(Operator):
+class NAGATO_OT_SetLocalHost(Operator):
     bl_label = 'Set Host'
-    bl_idname = 'nagato.set_host'
+    bl_idname = 'nagato.set_local_host'
     bl_description = 'sets host'    
     
     def execute(self, context):
-        host = context.preferences.addons['nagato'].preferences.host_url
+        host = context.preferences.addons['nagato'].preferences.local_host_url
+        gazu.client.set_host(host)
+        self.report({'INFO'}, 'host set to ' + host)
+        return{'FINISHED'}
+
+
+class NAGATO_OT_SetRemoteHost(Operator):
+    bl_label = 'Set Host'
+    bl_idname = 'nagato.set_remote_host'
+    bl_description = 'sets host'    
+    
+    def execute(self, context):
+        host = context.preferences.addons['nagato'].preferences.remote_host_url
         gazu.client.set_host(host)
         self.report({'INFO'}, 'host set to ' + host)
         return{'FINISHED'}
@@ -118,7 +113,12 @@ class NAGATO_OT_Login(Operator):
     bl_label = 'Kitsu Login'
     bl_idname = 'nagato.login'
     bl_description = 'login to kitsu'
-    
+
+    remote_bool = bpy.props.BoolProperty(
+        name = 'Remote',
+        default = False,
+        description = 'is host url remote'
+    )
     
     user_name: StringProperty(
         name = 'User Name',
@@ -144,9 +144,17 @@ class NAGATO_OT_Login(Operator):
     def execute(self, context):
         try:
             current_user.clear()
-            bpy.ops.nagato.set_host()
-            gazu.log_in(self.user_name, self.password)
-            current_user.append(gazu.user.client.get_current_user()["full_name"])
+            remote_host.clear()
+            if self.remote_bool == False:
+                bpy.ops.nagato.set_local_host()
+                gazu.log_in(self.user_name, self.password)
+                remote_host.append(False)
+                current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Local Host')
+            else:
+                bpy.ops.nagato.set_remote_host()
+                gazu.log_in(self.user_name, self.password)
+                remote_host.append(True)
+                current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Remote Host')
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
@@ -155,18 +163,23 @@ class NAGATO_OT_Login(Operator):
         except (NotAuthenticatedException, ServerErrorException, ParameterException):
             self.report({'WARNING'}, 'wrong credecials')
             current_user.append('NOT LOGGED IN')
+            remote_host.append('None')
         except (MissingSchema, InvalidSchema, ConnectionError) as err:
             self.report({'WARNING'}, str(err))
             current_user.append('NOT LOGGED IN')
+            remote_host.append('None')
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
             current_user.append('NOT LOGGED IN')
+            remote_host.append('None')
         except (MethodNotAllowedException, RouteNotFoundException):
             self.report({'WARNING'}, 'invalid host url')
             current_user.append('NOT LOGGED IN')
+            remote_host.append('None')
         except Exception:
             self.report({'WARNING'}, 'something went wrong.')
             current_user.append('NOT LOGGED IN')
+            remote_host.append('None')
         return{'FINISHED'}
 
 
@@ -431,7 +444,8 @@ class NAGATO_MT_FilterTask(Menu):
 ############### all classes ####################    
 classes = [
         #NagatoSetHost,
-        NAGATO_OT_SetHost,
+        NAGATO_OT_SetLocalHost,
+        NAGATO_OT_SetRemoteHost,
         NAGATO_OT_Login,
         NAGATO_OT_Refresh,
         MyTasks,

@@ -18,6 +18,11 @@ from . import kitsu
 
 ########## operators ################################
 client = pysvn.Client()
+# def remote():
+#         if kitsu.remote_host[0] == True:
+#             return True
+#         else:
+#             return False
 
 class OBJECT_OT_NagatoAdd(Operator):
     bl_label = 'Add file to SVN'
@@ -100,15 +105,44 @@ class OBJECT_OT_NagatoUpdate(Operator):
             client.update(bpy.path.abspath('//') + 'maps')
             bpy.ops.wm.revert_mainfile()
             self.report({'INFO'}, "Update Successful")
-        except pysvn._pysvn_3_7.ClientError:
-            self.report({'WARNING'}, "None of the targets are working copies")
+        except pysvn._pysvn_3_7.ClientError as e:
+            self.report({'WARNING'}, str(e))
+        # except pysvn._pysvn_3_7.ClientError:
+        #     self.report({'WARNING'}, "None of the targets are working copies")
         return{'FINISHED'}
 
 
 class OBJECT_OT_NagatoUpdateAll(Operator):
-    bl_label = 'Update all file'
+    bl_label = 'Update all files'
     bl_idname = 'nagato.update_all'
     bl_description = 'Update all files in project repository'
+    
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
+
+    def execute(self, context):
+        user = os.environ.get('homepath')
+        user_f = user.replace("\\","/")
+        mount_point = 'C:' + user_f + '/projects/'
+        project = mount_point + kitsu.current_project[0]
+        try:
+            for file in os.listdir(project):
+                try:
+                    client.update(os.path.join(project, file))
+                    bpy.ops.wm.revert_mainfile()
+                    self.report({'INFO'}, "Update Successful")
+                except pysvn._pysvn_3_7.ClientError as error:
+                    self.report({'INFO'}, str(error))
+        except FileNotFoundError:
+            self.report({'WARNING'}, 'project files do not exist')
+        return{'FINISHED'}
+
+
+class OBJECT_OT_NagatoRevert(Operator):
+    bl_label = 'reset file'
+    bl_idname = 'nagato.revert'
+    bl_description = 'revert to last checkpoint'
     
     @classmethod
     def poll(cls, context):
@@ -116,17 +150,51 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
 
 
     def execute(self, context):
-        user = os.environ.get('homepath')
-        user_f = user.replace("\\","/")
-        mount_point = 'C:' + user_f + '/projects/'
-        project = mount_point + kitsu.current_project[0]
-        for file in os.listdir(project):
-            try:
-                client.update(os.path.join(project, file))
-                bpy.ops.wm.revert_mainfile()
-                self.report({'INFO'}, "Update Successful")
-            except pysvn._pysvn_3_7.ClientError:
-                pass
+        try:
+            client.revert(f'{bpy.context.blend_data.filepath}')
+            bpy.ops.wm.revert_mainfile()
+            self.report({'INFO'}, "reverted")
+        except pysvn._pysvn_3_7.ClientError as e:
+            self.report({'WARNING'}, str(e))
+        return{'FINISHED'}
+
+
+class OBJECT_OT_NagatoResolve(Operator):
+    bl_label = 'resolve conflict'
+    bl_idname = 'nagato.resolve'
+    bl_description = 'resolve file conflict'
+    
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
+
+
+    def execute(self, context):
+        try:
+            client.resolved(f'{bpy.context.blend_data.filepath}')
+            self.report({'INFO'}, "conflict resolved")
+        except pysvn._pysvn_3_7.ClientError as e:
+            self.report({'WARNING'}, str(e))
+        return{'FINISHED'}
+
+
+class OBJECT_OT_NagatoCleanUp(Operator):
+    bl_label = 'clean up'
+    bl_idname = 'nagato.clean_up'
+    bl_description = 'clean up files'
+    
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN'
+
+
+    def execute(self, context):
+        try:
+            file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
+            client.cleanup(file_root[0])
+            self.report({'INFO'}, "clean up succesful")
+        except pysvn._pysvn_3_7.ClientError as e:
+            self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
 
@@ -135,7 +203,13 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     bl_idname = 'nagato.check_out'
     bl_description = 'checkout project files'
     
-
+    
+    remote_bool = bpy.props.BoolProperty(
+        name = 'Remote',
+        default = False,
+        description = 'is host remote'
+    )
+    
     username: StringProperty(
         name = 'Username',
         default = 'username',
@@ -149,18 +223,6 @@ class OBJECT_OT_NagatoCheckOut(Operator):
         description = 'input your svn password'
         )
 
-    # repo_url: StringProperty(
-    #     name = 'repository url',
-    #     default = kitsu.url[0],
-    #     # if len(nagato.kitsu.current_project) != 0 else '',
-    #     description = 'repository location'
-    #     )
-    
-    # directory: StringProperty(
-    #     name = 'directory',
-    #     default = file_path,
-    #     description = 'checkout directory'
-    #     )
         
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -169,39 +231,52 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     def poll(cls, context):
         return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
 
-
     def execute(self, context):
         # if len(kitsu.current_project) != 0:
         project_info = gazu.project.get_project_by_name(kitsu.current_project[0])
-        repo_url = project_info['data']['repository_url']
-        user = os.environ.get('homepath')
-        user_f = user.replace("\\","/")
-        mount_point = 'C:' + user_f + '/projects/'
-        file_path = mount_point + kitsu.current_project[0]
-        print(file_path)  
-        client.set_default_username(self.username)
-        client.set_default_password(self.password)
-        if os.path.isdir(mount_point) == False:
-            os.mkdir(mount_point)
-        if os.path.isdir(file_path) == False:
-            os.mkdir(file_path)
-            try:
-                client.checkout(repo_url, file_path)
-                self.report({'INFO'}, "project files downloaded")
-            except pysvn._pysvn_3_7.ClientError as e:
-                self.report({'WARNING'}, str(e))
-        elif len(os.listdir(file_path)) == 0:
-            try:
-                client.checkout(repo_url, file_path)
-                self.report({'INFO'}, "project files downloaded")
-            except pysvn._pysvn_3_7.ClientError as e:
-                self.report({'WARNING'}, str(e))
-        elif os.path.isdir(file_path + '/.svn') == True:
-            bpy.ops.nagato.update_all()
-            self.report({'INFO'}, "project file updated")
-        else:
-            self.report({'WARNING'}, "Directory is not empty and not under version control")
-        return{'FINISHED'}
+        try:
+            if self.remote_bool is False:
+                repo_url = project_info['data']['local_svn_url']
+            else:
+                repo_url = project_info['data']['remote_svn_url']
+            print(repo_url)
+            user = os.environ.get('homepath')
+            user_f = user.replace("\\","/")
+            mount_point = 'C:' + user_f + '/projects/'
+            file_path = mount_point + kitsu.current_project[0]
+            print(file_path)  
+            client.set_default_username(self.username)
+            client.set_default_password(self.password)
+            if os.path.isdir(mount_point) == False:
+                os.mkdir(mount_point)
+            if os.path.isdir(file_path) == False:
+                os.mkdir(file_path)
+                try:
+                    if client.is_url(repo_url) in [1, True]:
+                        client.checkout(repo_url, file_path)
+                        self.report({'INFO'}, "project files downloaded")
+                    else:
+                        self.report({'INFO'}, "SVN url invalid")
+                except pysvn._pysvn_3_7.ClientError as e:
+                    self.report({'WARNING'}, str(e))
+            elif len(os.listdir(file_path)) == 0:
+                try:
+                    if client.is_url(repo_url) in [1, True]:
+                        client.checkout(repo_url, file_path)
+                        self.report({'INFO'}, "project files downloaded")
+                    else:
+                        self.report({'WARNING'}, "SVN url invalid")
+                except pysvn._pysvn_3_7.ClientError as e:
+                    self.report({'WARNING'}, str(e))
+            elif os.path.isdir(file_path + '/.svn') == True:
+                bpy.ops.nagato.update_all()
+                self.report({'INFO'}, "project file updated")
+            else:
+                self.report({'WARNING'}, "Directory is not empty and not under version control")
+            return{'FINISHED'}
+        except TypeError:
+            self.report({'WARNING'}, "svn url not set")
+            return{'FINISHED'}
 
 
 class OBJECT_OT_ConsolidateMaps(Operator):
@@ -211,6 +286,10 @@ class OBJECT_OT_ConsolidateMaps(Operator):
 
     def invoke(self, context, event):
          return context.window_manager.invoke_confirm(self, event)
+
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
     def execute(self, context):
         # bpy.ops.file.make_paths_relative()
@@ -224,38 +303,81 @@ class OBJECT_OT_ConsolidateMaps(Operator):
         # bpy.ops.file.unpack_all(method='USE_ORIGINAL')
         try:
             bpy.ops.file.make_paths_relative()
-            bpy.ops.file.pack_all()
             images = bpy.data.images
 
             for image in images:
                 if image.name != 'Viewer Node':
                     if image.name != 'Render Result':
-                        image.packed_files[image.filepath].filepath = '//maps/' + image.name_full
-            bpy.ops.file.unpack_all(method='USE_ORIGINAL')
-            
-            #add consolidated files to svn
-            statuses = client.status(bpy.path.abspath('//') + 'maps')
-            for status in statuses:
-                if str(status.text_status) == 'unversioned':
-                    print(status.text_status) 
-                    r = str(status)[13:-1].replace('\\\\', '/')
-                    print(r[1:-1])
-                    client.add(r[1:-1])
-            self.report({'INFO'}, "Maps Colsolidated")
+                        if image.name_full.split('_', 1)[0].lower() == 'ref':
+                            print(image.name_full + ' this is a ref')
+                        elif image.name_full.rsplit('.', 1)[-1].lower() in ['jpg', 'jpeg', 'png', 'bmp', 'sgi', 'rgb', 'bw', 'jp2',
+                                                                            'j2c', 'tga', 'cin', 'dpx', 'exr', 'hdr', 'tif', 'tiff']:
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'png':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.png'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'jpeg':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.jpg'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'bmp':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.bmp'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'iris':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.rgb'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'jpeg2000':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.jp2'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'targa':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.tga'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'open_exr':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.exr'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'tiff':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.tif'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'hdr':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.hdr'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'cineon':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.cin'
+                            image.unpack(method='USE_ORIGINAL')
+                        elif image.file_format.lower() == 'dpx':
+                            image.pack()
+                            image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}.dpx'
+                            image.unpack(method='USE_ORIGINAL')
         except KeyError as e:
             self.report({'WARNING'}, str(e))
         except RuntimeError as r:
             self.report({'WARNING'}, str(r))
-        except pysvn._pysvn_3_7.ClientError:
-            bpy.ops.file.make_paths_relative()
-            bpy.ops.file.pack_all()
-            images = bpy.data.images
-
-            for image in images:
-                if image.name != 'Viewer Node':
-                    if image.name != 'Render Result':
-                        image.packed_files[image.filepath].filepath = '//maps/' + image.name_full
-            bpy.ops.file.unpack_all(method='USE_ORIGINAL')
+        else:
+            try:
+                #add consolidated files to svn
+                statuses = client.status(bpy.path.abspath('//') + 'maps')
+                for status in statuses:
+                    if str(status.text_status) == 'unversioned':
+                        print(status.text_status) 
+                        r = str(status)[13:-1].replace('\\\\', '/')
+                        print(r[1:-1])
+                        client.add(r[1:-1])
+                        client.checkin([r[1:-1]], f'commit consolidated maps')
+                self.report({'INFO'}, "Maps Colsolidated")
+            except pysvn._pysvn_3_7.ClientError as error:
+                self.report({'WARNING'}, str(error))
+                self.report({'INFO'}, "Maps Colsolidated but not under version control")
         return{'FINISHED'}
 
 classes = [
@@ -263,6 +385,9 @@ classes = [
     OBJECT_OT_NagatoPublish,
     OBJECT_OT_NagatoUpdate,
     OBJECT_OT_NagatoUpdateAll,
+    OBJECT_OT_NagatoRevert,
+    OBJECT_OT_NagatoResolve,
+    OBJECT_OT_NagatoCleanUp,
     OBJECT_OT_NagatoCheckOut,
     OBJECT_OT_ConsolidateMaps
 ]

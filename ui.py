@@ -24,8 +24,17 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
         col.operator('nagato.add')
         col.operator('nagato.publish')
         col.operator('nagato.update')
+        col.operator('nagato.update_all')
+
         row = layout.row()
-        row.operator('nagato.check_out', text= 'download/update project files')
+        box = row.box()
+        col = box.column(align= True)
+        col.operator('nagato.revert')
+        col.operator('nagato.resolve')
+        col.operator('nagato.clean_up')
+
+        row = layout.row()
+        row.operator('nagato.check_out', text= 'download project files')
         row = layout.row()
         row.operator('nagato.consolidate', text= 'consolidate maps')
         
@@ -122,20 +131,26 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     # when defining this in a submodule of a python package.
     bl_idname = 'nagato'
     user = os.environ.get('homepath').replace("\\","/")
-    host_url: StringProperty(
-        name="Url of server",
+    local_host_url: StringProperty(
+        name="Local url of server",
+        default='',
+    )
+
+    remote_host_url: StringProperty(
+        name="Remote url of server",
         default='',
     )
 
     project_mount_point: StringProperty(
-        name="Project file mounting point",
+        name="Project mounting point",
         default='C:' + user,
     )
 
     def draw(self, context):
         layout = self.layout
         # layout.label(text="Nagato Preferences")
-        layout.prop(self, "host_url")
+        layout.prop(self, "local_host_url")
+        layout.prop(self, "remote_host_url")
         layout.prop(self, "project_mount_point")
         layout.operator('nagato.login')
 
