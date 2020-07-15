@@ -22,56 +22,23 @@ current_filter = []
 current_status = []
 
 
-########################### FUNCTIONS ################################
-def fliter_projects(project):
-    current_project.clear()
-    current_filter.clear()
-    displayed_tasks.clear()
-    projects.clear()
-    task_tpyes.clear()
-    filtered_todo.clear()
-    for file in todo:
-        if file['project_name'] == project:
-            projects.append(file)
-    current_project.append(project)
-    bpy.context.scene.update_tag()
-    bpy.app.handlers.depsgraph_update_pre.append(update_list)
-
-
-def fliter_task(filter):
-    current_filter.clear()
-    displayed_tasks.clear()
-    filtered_todo.clear()
-    for file in projects:
-        if file['task_type_name'] == filter:
-            if file['sequence_name'] == None:
-                displayed_tasks.append([file['entity_name'], file['task_status_short_name']])
-            else:
-                displayed_tasks.append([file['sequence_name'] + '_' + file['entity_name'], file['task_status_short_name']])
-            filtered_todo.append(file) 
-    current_filter.append(filter)
-    bpy.context.scene.update_tag()
-    bpy.app.handlers.depsgraph_update_pre.append(update_list)  
-
-    
+########################### FUNCTIONS ################################ 
 def update_list(scene):
-    bpy.app.handlers.depsgraph_update_pre.remove(update_list)
-
     try:
         scene.col.clear()
     except:
         pass
 
-    for i, (tasks, tasks_stat) in enumerate(displayed_tasks, 1):   
+    for (task, task_status) in displayed_tasks:   
         colection = scene.col.add()   
-        colection.tasks = tasks
-        colection.tasks_stat = tasks_stat  
+        colection.tasks = task
+        colection.tasks_status = task_status  
 
 
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
-     tasks : StringProperty()
-     tasks_stat: StringProperty()
+     tasks: StringProperty()
+     tasks_status: StringProperty()
      
 
 #################### mapping lists into column #################################
@@ -80,7 +47,7 @@ class TASKS_UL_list(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             split = layout.split(factor= 0.6, align=True)   
             split.label(text = item.tasks, icon='BLENDER')
-            split.label(text = item.tasks_stat)
+            split.label(text = item.tasks_status)
         elif self.layout_type in {'GRID'}:
             pass
 ############## Operators #######################################
@@ -122,14 +89,14 @@ class NAGATO_OT_Login(Operator):
     
     user_name: StringProperty(
         name = 'User Name',
-        default = 'username',
+        default = 'aadesada',
         description = 'input your kitsu user name'
         )
     
     password: StringProperty(
         subtype = 'PASSWORD',
         name = 'Password',
-        default = 'password',
+        default = 'eaxum',
         description = 'input your kitsu password'
         )
     
@@ -221,12 +188,24 @@ class NAGATO_OT_Projects(Operator):
     project: StringProperty(default='')
     
     def execute(self, context):
-        #gazu.files.set_project_file_tree('bd7c84a9-3457-4d72-89f2-9a3546345b98', 'eaxum')
-        fliter_projects(self.project)
+        scene = context.scene
+        current_project.clear()
+        current_filter.clear()
+        displayed_tasks.clear()
+        projects.clear()
+        task_tpyes.clear()
+        filtered_todo.clear()
+        for file in todo:
+            if file['project_name'] == self.project:
+                projects.append(file)
+        current_project.append(self.project)
+        bpy.context.scene.update_tag()
+        update_list(scene)
         for task in projects:
             i = task['task_type_name']
             if i not in task_tpyes:
                 task_tpyes.append(i) 
+        bpy.ops.nagato.assets_refresh()
         self.report({'INFO'}, 'Project: ' + self.project)
         return{'FINISHED'}
 
@@ -236,11 +215,24 @@ class NAGATO_OT_Filter(Operator):
     bl_idname = 'nagato.filter'
     bl_description = 'filter task'    
     
-    task: StringProperty(default='')
+    filter: StringProperty(default='')
     
     def execute(self, context):
-        fliter_task(self.task)
-        self.report({'INFO'}, 'filtered by ' + self.task)
+        scene = context.scene
+        current_filter.clear()
+        displayed_tasks.clear()
+        filtered_todo.clear()
+        for file in projects:
+            if file['task_type_name'] == self.filter:
+                if file['sequence_name'] == None:
+                    displayed_tasks.append([file['entity_name'], file['task_status_short_name']])
+                else:
+                    displayed_tasks.append([file['sequence_name'] + '_' + file['entity_name'], file['task_status_short_name']])
+                filtered_todo.append(file) 
+        current_filter.append(self.filter)
+        bpy.context.scene.update_tag()
+        update_list(scene)
+        self.report({'INFO'}, 'filtered by ' + self.filter)
         return{'FINISHED'}
 
 
@@ -276,7 +268,7 @@ class NAGATO_OT_OpenFile(Operator):
         active_id = filtered_todo[task_list_index]['id']
         # user = os.environ.get('homepath').replace("\\","/")
         file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
-        
+        print(filtered_todo)
         if filtered_todo[task_list_index]['task_type_name'].casefold() == 'lighting':
             directory = file_path + '_lighting.blend'
         elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'rendering':
@@ -295,6 +287,7 @@ class NAGATO_OT_OpenFile(Operator):
             bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
         except:
             self.report({'WARNING'}, 'file path incorrect, check file tree')
+        bpy.context.scene.col_idx = task_list_index
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
@@ -439,7 +432,7 @@ class NAGATO_MT_FilterTask(Menu):
     def draw(self, context):
         for task in task_tpyes:
             layout = self.layout
-            layout.operator('nagato.filter', text= task).task= task
+            layout.operator('nagato.filter', text= task).filter= task
        
 ############### all classes ####################    
 classes = [
@@ -464,17 +457,12 @@ classes = [
 # registration
 def register():
     for cls in classes:
-        bpy.utils.register_class(cls)
-        
+        bpy.utils.register_class(cls)   
     bpy.types.Scene.col = bpy.props.CollectionProperty(type=MyTasks)
     bpy.types.Scene.col_idx = bpy.props.IntProperty(default=0)
 
-    bpy.app.handlers.depsgraph_update_pre.append(update_list)
-
 def unregister():
     for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
-        
-        
+        bpy.utils.unregister_class(cls)  
     del bpy.types.Scene.col
     del bpy.types.Scene.col_idx

@@ -1,6 +1,7 @@
 import bpy
 import gazu
 import nagato.kitsu
+import nagato.asset_browser
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
 import os
@@ -125,6 +126,36 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         row.operator('nagato.update_status')
 
 
+class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Asset Browser"
+    bl_idname = "NAGATO_PT_asset_browser"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Tool"
+    
+    
+    def draw(self, context):
+        layout = self.layout
+        ####### asset_types menu  #####################
+        row = layout.row()
+        row = row.column()
+
+        if len(nagato.asset_browser.active_asset_type) == 0:
+            asset_type_label = 'select asset type'
+        else:
+            asset_type_label = nagato.asset_browser.active_asset_type[0]
+        row.menu("nagato.select_asset_type", text = asset_type_label)
+        
+        ######### task list ######################################
+        row = layout.row()
+        row.template_list("ASSETS_UL_list", "", context.scene, "assets", context.scene, "assets_idx")
+        row = layout.row()
+        row.operator('nagato.link_asset', icon= 'LINKED', text= 'link asset')
+        row.operator('nagato.link_selected_asset', icon= 'LINKED', text= 'link selected assets')
+               
+
+
 #####preferences###################################
 class NagatoGenesis(bpy.types.AddonPreferences):
     # this must match the add-on name, use '__package__'
@@ -133,7 +164,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     user = os.environ.get('homepath').replace("\\","/")
     local_host_url: StringProperty(
         name="Local url of server",
-        default='',
+        default='http://rukia/api',
     )
 
     remote_host_url: StringProperty(
@@ -159,9 +190,11 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 def register():
     bpy.utils.register_class(NAGATO_PT_TaskManagementPanel)
     bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
+    bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.register_class(NagatoGenesis)
 
 def unregister():
     bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)
     bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
+    bpy.utils.unregister_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.unregister_class(NagatoGenesis)
