@@ -150,10 +150,55 @@ class NAGATO_OT_LinkSelectedAsset(Operator):
                     filepath=file_path,
                     filename=file_name,
                     directory=directory)
-
-
         self.report({'INFO'}, 'Asset Linked')
         return{'FINISHED'}
+
+
+class NAGATO_OT_AppendAsset(Operator):
+    bl_label = 'append asset'
+    bl_idname = 'nagato.append_asset'
+    bl_description = 'append in selected asset'    
+
+    def execute(self, context):
+        asset_list_index = bpy.context.scene.assets_idx
+        file_name = displayed_assets[asset_list_index]
+        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+        asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
+        blend_file = asset_path + '/' + file_name + '.blend'
+        section = "\\Collection\\"
+        file_path = blend_file + section + file_name
+        directory = blend_file + section
+
+        bpy.ops.wm.append(
+            filepath=file_path,
+            filename=file_name,
+            directory=directory)
+        self.report({'INFO'}, 'Asset appended')
+        return{'FINISHED'}
+
+
+class NAGATO_OT_AppendSelectedAsset(Operator):
+    bl_label = 'append asset'
+    bl_idname = 'nagato.append_selected_asset'
+    bl_description = 'append in all selected asset'    
+
+    def execute(self, context):
+        for asset in bpy.context.scene.assets:
+            if asset.multi_select:
+                file_name = asset.asset
+                mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+                asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
+                blend_file = asset_path + '/' + file_name + '.blend'
+                section = "\\Collection\\"
+                file_path = blend_file + section + file_name
+                directory = blend_file + section
+
+                bpy.ops.wm.append(
+                    filepath=file_path,
+                    filename=file_name,
+                    directory=directory)
+        self.report({'INFO'}, 'Asset appended')
+        return {'FINISHED'}
 
 
 ######################################### Menu ################################################################################
@@ -176,7 +221,9 @@ classes = [
         NAGATO_MT_AssetType,
         NAGATO_OT_Assets,
         NAGATO_OT_LinkAsset,
-        NAGATO_OT_LinkSelectedAsset
+        NAGATO_OT_LinkSelectedAsset,
+        NAGATO_OT_AppendAsset,
+        NAGATO_OT_AppendSelectedAsset
         ]  
     
     

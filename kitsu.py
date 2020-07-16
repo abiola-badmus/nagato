@@ -89,14 +89,14 @@ class NAGATO_OT_Login(Operator):
     
     user_name: StringProperty(
         name = 'User Name',
-        default = 'aadesada',
+        default = 'username',
         description = 'input your kitsu user name'
         )
     
     password: StringProperty(
         subtype = 'PASSWORD',
         name = 'Password',
-        default = 'eaxum',
+        default = 'password',
         description = 'input your kitsu password'
         )
     

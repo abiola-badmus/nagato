@@ -150,9 +150,12 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
         ######### task list ######################################
         row = layout.row()
         row.template_list("ASSETS_UL_list", "", context.scene, "assets", context.scene, "assets_idx")
-        row = layout.row()
+        row = layout.row(align=True)
         row.operator('nagato.link_asset', icon= 'LINKED', text= 'link asset')
         row.operator('nagato.link_selected_asset', icon= 'LINKED', text= 'link selected assets')
+        row = layout.row(align=True)
+        row.operator('nagato.append_asset', icon= 'APPEND_BLEND', text= 'append asset')
+        row.operator('nagato.append_selected_asset', icon= 'APPEND_BLEND', text= 'append selected assets')
                
 
 
@@ -164,7 +167,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     user = os.environ.get('homepath').replace("\\","/")
     local_host_url: StringProperty(
         name="Local url of server",
-        default='http://rukia/api',
+        default='',
     )
 
     remote_host_url: StringProperty(
