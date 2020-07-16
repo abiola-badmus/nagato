@@ -29,7 +29,15 @@ class ASSETS_UL_list(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if self.layout_type in {'DEFAULT', 'COMPACT'}: 
             # split = layout.split(factor= 0.6, align=True) 
-            layout.label(text = item.asset, icon='BLENDER')
+            if len(active_asset_type) == 0:
+                layout.label(text = item.asset, icon='BLENDER')
+            elif active_asset_type[0] == 'props':
+                layout.label(text = item.asset, icon='MATCUBE')
+            elif active_asset_type[0] == 'chars':
+                layout.label(text = item.asset, icon='MONKEY')
+            elif active_asset_type[0] == 'envs':
+                layout.label(text = item.asset, icon='WORLD_DATA')
+
             if item.multi_select:
                 layout.prop(item, 'multi_select', text='', icon = 'CHECKBOX_HLT', emboss=False, translate=False)
             else:

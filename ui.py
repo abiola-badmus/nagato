@@ -22,22 +22,22 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
         row = layout.row()
         box = row.box()
         col = box.column(align= True)
-        col.operator('nagato.add')
-        col.operator('nagato.publish')
-        col.operator('nagato.update')
-        col.operator('nagato.update_all')
+        col.operator('nagato.add', icon = 'ADD')
+        col.operator('nagato.publish', icon = 'EXPORT')
+        col.operator('nagato.update', icon = 'IMPORT')
+        col.operator('nagato.update_all', icon = 'IMPORT')
 
         row = layout.row()
         box = row.box()
         col = box.column(align= True)
-        col.operator('nagato.revert')
-        col.operator('nagato.resolve')
-        col.operator('nagato.clean_up')
+        col.operator('nagato.revert', icon='LOOP_BACK')
+        col.operator('nagato.resolve', icon = 'OUTLINER_DATA_GREASEPENCIL')
+        col.operator('nagato.clean_up', icon = 'BRUSH_DATA')
 
         row = layout.row()
-        row.operator('nagato.check_out', text= 'download project files')
+        row.operator('nagato.check_out', text= 'download project files',icon = 'IMPORT')
         row = layout.row()
-        row.operator('nagato.consolidate', text= 'consolidate maps')
+        row.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
         
 
 class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
@@ -70,7 +70,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         layout.label(text= f'user: {nagato.kitsu.current_user[0]}')                         
         row = layout.row()
         coll = row.column()
-        coll.operator('nagato.login')   
+        coll.operator('nagato.login', icon = 'USER')   
         coll = row.column()
         coll.operator('nagato.refresh', icon= 'FILE_REFRESH', text= '')
         
@@ -123,7 +123,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         ########### update status ######################33
         row = layout.row()
         row.enabled = text == "Task file"
-        row.operator('nagato.update_status')
+        row.operator('nagato.update_status', icon ='OUTLINER_DATA_GP_LAYER')
 
 
 class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
