@@ -6,6 +6,7 @@ from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
 import os
 
+
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
     bl_label = 'Version Control'
     bl_idname = 'SVN_PT_Pysvn'
