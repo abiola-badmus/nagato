@@ -45,8 +45,27 @@ class MyTasks(PropertyGroup):
 class TASKS_UL_list(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(factor= 0.6, align=True)   
-            split.label(text = item.tasks, icon='BLENDER')
+            if len(current_filter) == 0:
+                task_icon='BLENDER'
+            elif current_filter[0].lower() in {'modeling'}:
+                task_icon='CUBE'
+            elif current_filter[0].lower() in {'shading', 'texturing'}:
+                task_icon='SHADING_RENDERED'
+            elif current_filter[0].lower() in {'lighting'}:
+                task_icon='OUTLINER_DATA_LIGHT'
+            elif current_filter[0].lower() in {'anim', 'animation'}:
+                task_icon='ARMATURE_DATA'
+            elif current_filter[0].lower() in {'fx'}:
+                task_icon='SHADERFX'
+            elif current_filter[0].lower() in {'rigging'}:
+                task_icon='BONE_DATA'
+            elif current_filter[0].lower() in {'layout'}:
+                task_icon='MOD_ARRAY'
+            else:
+                task_icon='BLENDER'
+
+            split = layout.split(factor= 0.8, align=True)   
+            split.label(text = item.tasks, icon=task_icon)
             split.label(text = item.tasks_status)
         elif self.layout_type in {'GRID'}:
             pass
