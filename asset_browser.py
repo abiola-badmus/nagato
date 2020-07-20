@@ -213,6 +213,14 @@ class NAGATO_MT_AssetType(Menu):
             layout.operator('nagato.assets', text= i).asset_type = i
 
 
+class NAGATO_MT_AssetFiles(Menu):
+    bl_label = 'project files operators'
+    bl_idname = "nagato.asset_files"
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('nagato.link_selected_asset', text= 'link selected assets')
+        layout.operator('nagato.append_asset', text= 'append selected assets')
 ############### all classes ####################    
 classes = [
         Asset,
@@ -223,7 +231,8 @@ classes = [
         NAGATO_OT_LinkAsset,
         NAGATO_OT_LinkSelectedAsset,
         NAGATO_OT_AppendAsset,
-        NAGATO_OT_AppendSelectedAsset
+        NAGATO_OT_AppendSelectedAsset,
+        NAGATO_MT_AssetFiles
         ]  
     
     

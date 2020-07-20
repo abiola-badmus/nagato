@@ -20,25 +20,27 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
         layout = self.layout
         layout.label(text='SVN version control')
         
-        row = layout.row()
-        box = row.box()
-        col = box.column(align= True)
-        col.operator('nagato.add', icon = 'ADD')
+        box = layout.box()
+        row = box.row(align=True)
+        col = row.column()
+        # box = row.box()
+        # col = box.column(align= True)
         col.operator('nagato.publish', icon = 'EXPORT')
+        col.operator('nagato.add', icon = 'ADD')
+        col = row.column()
         col.operator('nagato.update', icon = 'IMPORT')
         col.operator('nagato.update_all', icon = 'IMPORT')
-
+        
         row = layout.row()
-        box = row.box()
-        col = box.column(align= True)
+        col = row.column(align= True)
         col.operator('nagato.revert', icon='LOOP_BACK')
         col.operator('nagato.resolve', icon = 'OUTLINER_DATA_GREASEPENCIL')
         col.operator('nagato.clean_up', icon = 'BRUSH_DATA')
 
-        row = layout.row()
-        row.operator('nagato.check_out', text= 'download project files',icon = 'IMPORT')
-        row = layout.row()
-        row.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
+        col = row.column(align= True)
+        col.operator('nagato.check_out', text= 'download project files',icon = 'IMPORT')
+        # row.alignment = 'LEFT'
+        col.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
         
 
 class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
@@ -53,9 +55,9 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         
-        task_list_index = bpy.context.scene.col_idx
-        col = context.scene.col
-        idx = context.scene.col_idx
+        task_list_index = bpy.context.scene.tasks_idx
+        col = context.scene.tasks
+        idx = context.scene.tasks_idx
         
         if idx >= len(col):
             text = "(index error)"
@@ -70,19 +72,18 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         #     layout.label(text= f'user: No Logged in user')
         layout.label(text= f'user: {nagato.kitsu.current_user[0]}')                         
         row = layout.row()
+        row.alignment = 'LEFT'
         coll = row.column()
         coll.operator('nagato.login', icon = 'USER')   
         coll = row.column()
         coll.operator('nagato.refresh', icon= 'FILE_REFRESH', text= '')
         
         ####### projects menu  #####################
-        if len(nagato.kitsu.project_names) == 0:
-            r = 'no'
-        else:
-            r = 'yes'
+        r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
         row = layout.row()
         row.enabled = r == 'yes'
-        row = row.column()
+        row.alignment = 'LEFT'
+
         if len(nagato.kitsu.current_project) == 0:
             project_label = 'select project'
         else:
@@ -90,12 +91,10 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         row.menu("nagato.select_project", text = project_label)
         
         ############# filter menu #############################
-        if len(nagato.kitsu.task_tpyes) == 0:
-            rf = 'no'
-        else:
-            rf = 'yes'
+        rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
         row = layout.row()
         row.enabled = rf == 'yes'
+        row.alignment = 'LEFT'
         if len(nagato.kitsu.current_filter) == 0:
             filter_label = 'select filter'
         else:
@@ -104,12 +103,22 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         
         ######### task list ######################################
         row = layout.row()
-        row.template_list("TASKS_UL_list", "", context.scene, "col", context.scene, "col_idx")
+        row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=6)
+        col = row.column()
+        col.operator("nagato.open", icon='FILEBROWSER', text="")
+        col.enabled = text == "Task file"
+        col.operator("nagato.update_status", icon='OUTLINER_DATA_GP_LAYER', text="")
+        col.separator()
+        col.menu("nagato.project_files", icon="DOWNARROW_HLT", text="")
+        col.separator()
+        col.operator('nagato.publish', icon = 'EXPORT', text='')
+        col.operator('nagato.update', icon = 'IMPORT', text='')
+
         
         #lists the amount of task in selected category
-        layout.prop(context.scene, 'col')
+        layout.prop(context.scene, 'tasks')
         
-        layout.operator('nagato.open', icon= 'FILEBROWSER', text= 'open file') 
+        # layout.operator('nagato.open', icon= 'FILEBROWSER', text= 'open file') 
         
         ########## task description ####################
         try:
@@ -122,9 +131,9 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             pass        
         
         ########### update status ######################33
-        row = layout.row()
-        row.enabled = text == "Task file"
-        row.operator('nagato.update_status', icon ='OUTLINER_DATA_GP_LAYER')
+        # row = layout.row()
+        # row.enabled = text == "Task file"
+        # row.operator('nagato.update_status', icon ='OUTLINER_DATA_GP_LAYER')
 
 
 class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
@@ -141,7 +150,7 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
         ####### asset_types menu  #####################
         row = layout.row()
         row = row.column()
-
+        row.alignment = 'LEFT'
         if len(nagato.asset_browser.active_asset_type) == 0:
             asset_type_label = 'select asset type'
         else:
@@ -151,12 +160,11 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
         ######### task list ######################################
         row = layout.row()
         row.template_list("ASSETS_UL_list", "", context.scene, "assets", context.scene, "assets_idx")
-        row = layout.row(align=True)
-        row.operator('nagato.link_asset', icon= 'LINKED', text= 'link asset')
-        row.operator('nagato.link_selected_asset', icon= 'LINKED', text= 'link selected assets')
-        row = layout.row(align=True)
-        row.operator('nagato.append_asset', icon= 'APPEND_BLEND', text= 'append asset')
-        row.operator('nagato.append_selected_asset', icon= 'APPEND_BLEND', text= 'append selected assets')
+        col = row.column()
+        col.operator('nagato.link_asset', icon= 'LINKED', text= '')
+        col.operator('nagato.append_asset', icon= 'APPEND_BLEND', text= '')
+        col.separator()
+        col.menu('nagato.asset_files', icon="DOWNARROW_HLT", text="")
                
 
 
@@ -168,7 +176,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     user = os.environ.get('homepath').replace("\\","/")
     local_host_url: StringProperty(
         name="Local url of server",
-        default='',
+        default='http://169.254.61.30/api',
     )
 
     remote_host_url: StringProperty(
@@ -193,12 +201,12 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 # registration
 def register():
     bpy.utils.register_class(NAGATO_PT_TaskManagementPanel)
-    bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
+    # bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
     bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.register_class(NagatoGenesis)
 
 def unregister():
     bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)
-    bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
+    # bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
     bpy.utils.unregister_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.unregister_class(NagatoGenesis)

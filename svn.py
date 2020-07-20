@@ -4,7 +4,8 @@ from bpy.types import (
     Operator,
     Panel,
     AddonPreferences,
-    PropertyGroup
+    PropertyGroup,
+    Menu
 )
 from bpy.props import (StringProperty)
 import pysvn
@@ -66,7 +67,7 @@ class OBJECT_OT_NagatoPublish(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -76,13 +77,11 @@ class OBJECT_OT_NagatoPublish(Operator):
         try:
             client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
             statuses = client.status(bpy.path.abspath('//') + 'maps')
-            print(client.status(f'{bpy.context.blend_data.filepath}'))
             for status in statuses:
-                if str(status.text_status) == 'modified':
-                    print(status.text_status) 
-                    r = str(status)[13:-1].replace('\\\\', '/')
-                    print(r[1:-1])
-                    client.checkin([r[1:-1]], self.comment)
+                print(str(status.text_status)) 
+                if str(status.text_status) in {'modified', 'added'}:
+                    map_dir = str(status)[13:-1].replace('\\\\', '/')
+                    client.checkin([map_dir[1:-1]], self.comment)
             self.report({'INFO'}, "Publish successful")
         except pysvn._pysvn_3_7.ClientError as e:
             self.report({'WARNING'}, str(e))
@@ -146,7 +145,7 @@ class OBJECT_OT_NagatoRevert(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -166,7 +165,7 @@ class OBJECT_OT_NagatoResolve(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -185,13 +184,17 @@ class OBJECT_OT_NagatoCleanUp(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
 
     def execute(self, context):
+        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+        file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
+        path = file_root[0].split(mount_point, 1)[1].split('/', 3)
+        root = os.path.join(mount_point, path[1], path[2])
+        print(root)
         try:
-            file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
-            client.cleanup(file_root[0])
+            client.cleanup(root)
             self.report({'INFO'}, "clean up succesful")
         except pysvn._pysvn_3_7.ClientError as e:
             self.report({'WARNING'}, str(e))
@@ -380,6 +383,28 @@ class OBJECT_OT_ConsolidateMaps(Operator):
                 self.report({'INFO'}, "Maps Colsolidated but not under version control")
         return{'FINISHED'}
 
+
+
+##########################MENU############################
+class NAGATO_MT_ProjectFiles(Menu):
+    bl_label = 'project files operators'
+    bl_idname = "nagato.project_files"
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('nagato.add', icon = 'ADD')
+        layout.separator()
+        layout.operator('nagato.update_all', text= 'update all files')
+        layout.operator('nagato.check_out', text= 'download project files')
+        layout.separator()
+        layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
+        layout.separator()
+        layout.operator('nagato.revert', icon='LOOP_BACK')
+        layout.operator('nagato.resolve', icon = 'OUTLINER_DATA_GREASEPENCIL')
+        layout.operator('nagato.clean_up', icon = 'BRUSH_DATA')
+
+
+
 classes = [
     OBJECT_OT_NagatoAdd,
     OBJECT_OT_NagatoPublish,
@@ -389,7 +414,8 @@ classes = [
     OBJECT_OT_NagatoResolve,
     OBJECT_OT_NagatoCleanUp,
     OBJECT_OT_NagatoCheckOut,
-    OBJECT_OT_ConsolidateMaps
+    OBJECT_OT_ConsolidateMaps,
+    NAGATO_MT_ProjectFiles
 ]
         
         

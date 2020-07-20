@@ -1,10 +1,12 @@
 import bpy
 import os
+import time
 import gazu
 from gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty)
+from bpy.props import (StringProperty, IntProperty, BoolProperty)
+time_queue = [0, 3]
 current_user = ['NOT LOGGED IN']
 remote_host = ['None']
 todo = []
@@ -24,22 +26,36 @@ current_status = []
 
 ########################### FUNCTIONS ################################ 
 def update_list(scene):
+    bpy.app.handlers.depsgraph_update_pre.remove(update_list)
+
     try:
-        scene.col.clear()
+        scene.tasks.clear()
     except:
         pass
 
-    for (task, task_status) in displayed_tasks:   
-        colection = scene.col.add()   
+    for i, (task, task_status) in enumerate(displayed_tasks, 0):   
+        colection = scene.tasks.add()   
         colection.tasks = task
-        colection.tasks_status = task_status  
+        colection.tasks_status = task_status 
+        colection.tasks_idx = i
 
+def double_click(self, context):
+    print(self.tasks_idx)
+    bpy.context.scene.tasks_idx = self.tasks_idx
+    time_queue.pop(0)
+    time_queue.append(time.time())
+    if time_queue[1] - time_queue[0] <= 0.3:
+        bpy.ops.nagato.open()
+        print('yes')
+    else:
+        print('no')
 
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
-     tasks: StringProperty()
-     tasks_status: StringProperty()
-     
+    tasks_idx: IntProperty()
+    tasks: StringProperty()
+    tasks_status: StringProperty()
+    # click: BoolProperty(default=False, update=double_click)
 
 #################### mapping lists into column #################################
 class TASKS_UL_list(bpy.types.UIList):
@@ -64,8 +80,9 @@ class TASKS_UL_list(bpy.types.UIList):
             else:
                 task_icon='BLENDER'
 
-            split = layout.split(factor= 0.8, align=True)   
-            split.label(text = item.tasks, icon=task_icon)
+            split = layout.split(factor= 0.8, align=True)
+            # split.prop(item, 'click',icon = task_icon, text=item.tasks, emboss=False, translate=False)
+            split.label(text = item.tasks, icon = task_icon)
             split.label(text = item.tasks_status)
         elif self.layout_type in {'GRID'}:
             pass
@@ -100,7 +117,7 @@ class NAGATO_OT_Login(Operator):
     bl_idname = 'nagato.login'
     bl_description = 'login to kitsu'
 
-    remote_bool = bpy.props.BoolProperty(
+    remote_bool = BoolProperty(
         name = 'Remote',
         default = False,
         description = 'is host url remote'
@@ -108,14 +125,14 @@ class NAGATO_OT_Login(Operator):
     
     user_name: StringProperty(
         name = 'User Name',
-        default = 'username',
+        default = 'aadesada',
         description = 'input your kitsu user name'
         )
     
     password: StringProperty(
         subtype = 'PASSWORD',
         name = 'Password',
-        default = 'password',
+        default = 'eaxum',
         description = 'input your kitsu password'
         )
     
@@ -128,6 +145,7 @@ class NAGATO_OT_Login(Operator):
     
     
     def execute(self, context):
+        scene = context.scene
         try:
             current_user.clear()
             remote_host.clear()
@@ -144,7 +162,7 @@ class NAGATO_OT_Login(Operator):
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
-            bpy.app.handlers.depsgraph_update_pre.append(update_list)
+            # update_list(scene)
             self.report({'INFO'}, f"logged in as {current_user}")
         except (NotAuthenticatedException, ServerErrorException, ParameterException):
             self.report({'WARNING'}, 'wrong credecials')
@@ -175,6 +193,7 @@ class NAGATO_OT_Refresh(Operator):
     bl_description = 'refresh kitsu data'    
 
     def execute(self, context):
+        scene = context.scene
         print(current_project)
         print(len(current_project))
         todo.clear()
@@ -183,6 +202,7 @@ class NAGATO_OT_Refresh(Operator):
         displayed_tasks.clear()
         current_filter.clear()
         current_project.clear()
+        scene.tasks.clear()
         try:
             for ob in gazu.user.all_tasks_to_do():
                 if ob not in todo:
@@ -207,7 +227,7 @@ class NAGATO_OT_Projects(Operator):
     project: StringProperty(default='')
     
     def execute(self, context):
-        scene = context.scene
+        # scene = context.scene
         current_project.clear()
         current_filter.clear()
         displayed_tasks.clear()
@@ -219,7 +239,7 @@ class NAGATO_OT_Projects(Operator):
                 projects.append(file)
         current_project.append(self.project)
         bpy.context.scene.update_tag()
-        update_list(scene)
+        bpy.app.handlers.depsgraph_update_pre.append(update_list)
         for task in projects:
             i = task['task_type_name']
             if i not in task_tpyes:
@@ -237,7 +257,7 @@ class NAGATO_OT_Filter(Operator):
     filter: StringProperty(default='')
     
     def execute(self, context):
-        scene = context.scene
+        # scene = context.scene
         current_filter.clear()
         displayed_tasks.clear()
         filtered_todo.clear()
@@ -250,7 +270,7 @@ class NAGATO_OT_Filter(Operator):
                 filtered_todo.append(file) 
         current_filter.append(self.filter)
         bpy.context.scene.update_tag()
-        update_list(scene)
+        bpy.app.handlers.depsgraph_update_pre.append(update_list)
         self.report({'INFO'}, 'filtered by ' + self.filter)
         return{'FINISHED'}
 
@@ -265,7 +285,7 @@ class NAGATO_OT_OpenFile(Operator):
     @classmethod
     def poll(cls, context):
         try:
-            task_list_index = bpy.context.scene.col_idx
+            task_list_index = bpy.context.scene.tasks_idx
             filtered_todo[task_list_index]['id']
             status = 1
         except:
@@ -282,8 +302,9 @@ class NAGATO_OT_OpenFile(Operator):
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
+        # scene = context.scene
         mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-        task_list_index = bpy.context.scene.col_idx
+        task_list_index = bpy.context.scene.tasks_idx
         active_id = filtered_todo[task_list_index]['id']
         # user = os.environ.get('homepath').replace("\\","/")
         file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
@@ -306,11 +327,21 @@ class NAGATO_OT_OpenFile(Operator):
             bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
         except:
             self.report({'WARNING'}, 'file path incorrect, check file tree')
-        bpy.context.scene.col_idx = task_list_index
+        bpy.context.scene.tasks_idx = task_list_index
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
  
+
+class NAGATO_OT_DoubleClickOpen(Operator):
+    bl_label = 'open'
+    bl_idname = 'nagato.open'
+    bl_description = 'opens active selected task'
+    
+    def execute(self, context):
+        
+        return{'FINISHED'}
+
 
 class NAGATO_OT_SetStatus(Operator):
     bl_label = 'status'
@@ -325,7 +356,7 @@ class NAGATO_OT_SetStatus(Operator):
         gazu.task.get_task_status_by_short_name(self.stat)
         s = gazu.task.get_task_status_by_short_name(self.stat)
         status_name.append(s)
-        task_list_index = bpy.context.scene.col_idx
+        task_list_index = bpy.context.scene.tasks_idx
         filtered_todo[task_list_index]['id']
         current_status.append(s['short_name'])
         self.report({'INFO'}, 'Status: ' + self.stat)
@@ -350,7 +381,7 @@ class NAGATO_OT_UpdateStatus(Operator):
         return context.window_manager.invoke_props_dialog(self)
     
     def draw(self, context):
-        task_list_index = bpy.context.scene.col_idx
+        task_list_index = bpy.context.scene.tasks_idx
         task_type = filtered_todo[task_list_index]['task_type_name']
         entity_name = filtered_todo[task_list_index]['entity_name']
         entity_sq_name = filtered_todo[task_list_index]['sequence_name']
@@ -404,8 +435,9 @@ class NAGATO_OT_UpdateStatus(Operator):
         row.prop(self, "comment")
 
     def execute(self, context):
+        # scene = context.scene
         try:
-            task_list_index = bpy.context.scene.col_idx
+            task_list_index = bpy.context.scene.tasks_idx
             gazu.task.add_comment(filtered_todo[task_list_index]['id'], status_name[0], self.comment)
             if status_name[0]['short_name'] == 'wfa':
                 bpy.ops.nagato.publish()
@@ -469,7 +501,7 @@ classes = [
         NAGATO_MT_Projects,
         NAGATO_OT_SetStatus,
         NAGATO_MT_StatusList,
-        NAGATO_OT_UpdateStatus
+        NAGATO_OT_UpdateStatus,
         ]  
     
     
@@ -477,11 +509,13 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)   
-    bpy.types.Scene.col = bpy.props.CollectionProperty(type=MyTasks)
-    bpy.types.Scene.col_idx = bpy.props.IntProperty(default=0)
+    bpy.types.Scene.tasks = bpy.props.CollectionProperty(type=MyTasks)
+    bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
+
+    bpy.app.handlers.depsgraph_update_pre.append(update_list)
 
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)  
-    del bpy.types.Scene.col
-    del bpy.types.Scene.col_idx
+    del bpy.types.Scene.tasks
+    del bpy.types.Scene.tasks_idx
