@@ -2,6 +2,10 @@
 
 Nagato is a Blender add-on to manage animation production tasks with [CG-wire's](https://www.cg-wire.com/) Kitsu and perform version control functions with [SVN](https://subversion.apache.org/).
 
+## Dependencies
+
+Nagato is only an extension of [CG-Wire's Kitsu](https://www.cg-wire.com/). To get this to work in Blender, you need to have a Kitsu account (you can also host it yourself) as well as an SVN repository where you project files are stored.
+
 ## Installation
 
 Download the add-on from [here](https://gumroad.com/l/xVnjW).
