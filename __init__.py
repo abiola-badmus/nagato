@@ -66,17 +66,26 @@ def dependecy(directory, destination):
 
 
 def move_dependecies():
-    directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
+    user_directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
+    pref_directory_pysvn = bpy.utils.script_path_pref() + '/addons/nagato/pysvn'
     destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
-    directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
+    user_directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
+    pref_directory_gazu = bpy.utils.script_path_pref() + '/addons/nagato/gazu'
     destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
     if is_admin():
-        dependecy(directory_pysvn, destination_pysvn)
-        dependecy(directory_gazu, destination_gazu)
+        try:
+            dependecy(user_directory_pysvn, destination_pysvn)
+            dependecy(user_directory_gazu, destination_gazu)
+        except FileNotFoundError:
+            dependecy(pref_directory_pysvn, destination_pysvn)
+            dependecy(pref_directory_gazu, destination_gazu)
     else:
         try:
-            dependecy(directory_pysvn, destination_pysvn)
-            dependecy(directory_gazu, destination_gazu)
+            dependecy(user_directory_pysvn, destination_pysvn)
+            dependecy(user_directory_gazu, destination_gazu)
+        except FileNotFoundError:
+            dependecy(pref_directory_pysvn, destination_pysvn)
+            dependecy(pref_directory_gazu, destination_gazu)
         except PermissionError:
             loc = sys.executable
             py_loc = bpy.utils.script_path_user() + '/addons/nagato/util/activate.py'
