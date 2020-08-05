@@ -309,15 +309,13 @@ class NAGATO_OT_OpenFile(Operator):
         # user = os.environ.get('homepath').replace("\\","/")
         file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
         print(filtered_todo)
-        if filtered_todo[task_list_index]['task_type_name'].casefold() == 'lighting':
+        if filtered_todo[task_list_index]['task_type_name'].casefold() in {'lighting', 'rendering', 'compositing'}:
             directory = file_path + '_lighting.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'rendering':
-            directory = file_path + '_lighting.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'previz':
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'layout', 'previz'}:
             directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() == 'layout':
-            directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() in ['anim', 'animation']:
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'fx'}:
+            directory = file_path + '_fx.blend'
+        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'anim', 'animation'}:
             directory = file_path + '_anim.blend'
         else:
             directory = file_path + '.blend'
