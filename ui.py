@@ -277,7 +277,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         box_3.prop(self, "sequence_name")
         box_3.prop(self, "scenes_name")
         # layout = self.layout
-        # layout.operator('nagato.login')
+        layout.operator('nagato.set_file_tree', text='apply file tree')
 
 
 # registration

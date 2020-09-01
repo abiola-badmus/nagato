@@ -246,8 +246,9 @@ class OBJECT_OT_NagatoCheckOut(Operator):
             print(f'this {project_info}')
             user = os.environ.get('homepath')
             user_f = user.replace("\\","/")
-            mount_point = os.path.join('C:', user_f, 'projects')
-            file_path = mount_point + kitsu.current_project[0]
+            root = context.preferences.addons['nagato'].preferences.root
+            mount_point = os.path.join('C:', user_f, root)
+            file_path = os.path.join(mount_point, kitsu.current_project[0])
             print(file_path)  
             client.set_default_username(self.username)
             client.set_default_password(self.password)
@@ -409,13 +410,6 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
-
-    # def draw(self, context):
-    #     layout = self.layout
-    #     row = layout.row()
-    #     ####### projects menu  #####################
-    #     row.menu("nagato.select_project", text = 'dswsf')
-    #     row.operator('nagato.svn_url')
 
     def execute(self, context):
         project = gazu.project.get_project_by_name(kitsu.current_project[0])

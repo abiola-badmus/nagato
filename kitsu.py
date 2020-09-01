@@ -1,6 +1,7 @@
 import bpy
 import os
 import time
+import json
 import gazu
 from gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
@@ -483,6 +484,47 @@ class NAGATO_OT_GetRefImg(Operator):
         return{'FINISHED'}
 
 
+class OBJECT_OT_NagatoSetFileTree(Operator):
+    bl_label = 'set file tree'
+    bl_idname = 'nagato.set_file_tree'
+    bl_description = 'set file tree'
+
+    @classmethod
+    def poll(cls, context):
+        return current_user[0] != 'NOT LOGGED IN' and len(current_project) != 0 and current_user[1] == 'admin'
+
+    def execute(self, context):
+        root = context.preferences.addons['nagato'].preferences.root
+        asset_path = context.preferences.addons['nagato'].preferences.asset_path
+        shot_path = context.preferences.addons['nagato'].preferences.shot_path
+        sequence_path = context.preferences.addons['nagato'].preferences.sequence_path
+        scenes_path = context.preferences.addons['nagato'].preferences.scenes_path
+        asset_name = context.preferences.addons['nagato'].preferences.asset_name
+        shot_name = context.preferences.addons['nagato'].preferences.shot_name
+        sequence_name = context.preferences.addons['nagato'].preferences.sequence_name
+        scenes_name = context.preferences.addons['nagato'].preferences.scenes_name
+        with open('file_tree.json', 'r') as data:
+            file_tree = json.load(data)
+        #ROOT
+        file_tree['working']['root'] = root
+        #FOLDER PATHS
+        file_tree['working']['folder_path']['shot'] = shot_path
+        file_tree['working']['folder_path']['asset'] = asset_path
+        file_tree['working']['folder_path']['sequence'] = sequence_path
+        file_tree['working']['folder_path']['scene'] = scenes_path
+        #FILE_NAMES
+        file_tree['working']['file_name']['shot'] = shot_name
+        file_tree['working']['file_name']['asset'] = asset_name
+        file_tree['working']['file_name']['sequence'] = sequence_name
+        file_tree['working']['file_name']['scene'] = scenes_name
+
+        project = gazu.project.get_project_by_name(current_project[0])
+        project_id = project['id']
+        gazu.files.update_project_file_tree(project_id, file_tree)
+
+        return{'FINISHED'}
+
+
 ######################################### Menu ################################################################################
 class NAGATO_MT_StatusList(Menu):
     bl_label = 'select_status'
@@ -530,7 +572,8 @@ classes = [
         NAGATO_OT_SetStatus,
         NAGATO_MT_StatusList,
         NAGATO_OT_UpdateStatus,
-        NAGATO_OT_GetRefImg
+        NAGATO_OT_GetRefImg,
+        OBJECT_OT_NagatoSetFileTree
         ]  
     
     
