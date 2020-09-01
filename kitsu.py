@@ -125,14 +125,16 @@ class NAGATO_OT_Login(Operator):
     
     user_name: StringProperty(
         name = 'User Name',
-        default = 'username',
+        # default = 'username',
+        default = 'aadesada',
         description = 'input your kitsu user name'
         )
     
     password: StringProperty(
         subtype = 'PASSWORD',
         name = 'Password',
-        default = 'password',
+        # default = 'password',
+        default = 'eaxum',
         description = 'input your kitsu password'
         )
     
@@ -154,11 +156,13 @@ class NAGATO_OT_Login(Operator):
                 gazu.log_in(self.user_name, self.password)
                 remote_host.append(False)
                 current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Local Host')
+                current_user.append(f'{gazu.user.client.get_current_user()["role"]}')
             else:
                 bpy.ops.nagato.set_remote_host()
                 gazu.log_in(self.user_name, self.password)
                 remote_host.append(True)
                 current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Remote Host')
+                current_user.append(f'{gazu.user.client.get_current_user()["role"]}')
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
@@ -453,6 +457,32 @@ class NAGATO_OT_UpdateStatus(Operator):
             self.report({'WARNING'}, "No status selected.")
         return{'FINISHED'}
 
+
+class NAGATO_OT_GetRefImg(Operator):
+    bl_label = 'Get Reference images'
+    bl_idname = 'nagato.get_ref'
+    bl_description = 'get reference images'
+
+    def execute(self, context):
+        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+        file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
+        path = file_root[0].split(mount_point, 1)[1].split('/', 3)
+        root = os.path.join(mount_point, path[1], path[2])
+        refs_path = os.path.join(root, 'refs')
+        for image in os.listdir(refs_path):
+            if image.split('_', 1)[0] in {'blueprint'}:
+                bpy.ops.object.load_background_image(filepath=os.path.join(refs_path, image))
+                bpy.ops.transform.rotate(value=1.5708, orient_axis='X')
+                bpy.context.object.empty_display_size = 1.5
+                bpy.context.object.empty_image_offset[1] = 0
+                bpy.context.object.show_empty_image_perspective = False
+
+
+
+
+        return{'FINISHED'}
+
+
 ######################################### Menu ################################################################################
 class NAGATO_MT_StatusList(Menu):
     bl_label = 'select_status'
@@ -500,6 +530,7 @@ classes = [
         NAGATO_OT_SetStatus,
         NAGATO_MT_StatusList,
         NAGATO_OT_UpdateStatus,
+        NAGATO_OT_GetRefImg
         ]  
     
     

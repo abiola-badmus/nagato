@@ -202,7 +202,7 @@ class OBJECT_OT_NagatoCleanUp(Operator):
 
 
 class OBJECT_OT_NagatoCheckOut(Operator):
-    bl_label = 'Check Out'
+    bl_label = 'Download files'
     bl_idname = 'nagato.check_out'
     bl_description = 'checkout project files'
     
@@ -242,10 +242,11 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                 repo_url = project_info['data']['local_svn_url']
             else:
                 repo_url = project_info['data']['remote_svn_url']
-            print(repo_url)
+            print(f'this {repo_url}')
+            print(f'this {project_info}')
             user = os.environ.get('homepath')
             user_f = user.replace("\\","/")
-            mount_point = 'C:' + user_f + '/projects/'
+            mount_point = os.path.join('C:', user_f, 'projects')
             file_path = mount_point + kitsu.current_project[0]
             print(file_path)  
             client.set_default_username(self.username)
@@ -311,10 +312,10 @@ class OBJECT_OT_ConsolidateMaps(Operator):
             for image in images:
                 if image.name != 'Viewer Node':
                     if image.name != 'Render Result':
-                        if image.name_full.split('_', 1)[0].lower() == 'ref':
+                        if image.name_full.split('_', 1)[0].lower() in {'ref', 'blueprint'}:
                             print(image.name_full + ' this is a ref')
-                        elif image.name_full.rsplit('.', 1)[-1].lower() in ['jpg', 'jpeg', 'png', 'bmp', 'sgi', 'rgb', 'bw', 'jp2',
-                                                                            'j2c', 'tga', 'cin', 'dpx', 'exr', 'hdr', 'tif', 'tiff']:
+                        elif image.name_full.rsplit('.', 1)[-1].lower() in {'jpg', 'jpeg', 'png', 'bmp', 'sgi', 'rgb', 'bw', 'jp2',
+                                                                            'j2c', 'tga', 'cin', 'dpx', 'exr', 'hdr', 'tif', 'tiff'}:
                             image.pack()
                             image.packed_files[image.filepath].filepath = f'//maps/{image.name_full}'
                             image.unpack(method='USE_ORIGINAL')
@@ -384,6 +385,47 @@ class OBJECT_OT_ConsolidateMaps(Operator):
         return{'FINISHED'}
 
 
+class OBJECT_OT_NagatoSvnUrl(Operator):
+    bl_label = 'set svn url'
+    bl_idname = 'nagato.svn_url'
+    bl_description = 'set svn url'
+    
+    local_url: StringProperty(
+        name = 'Local Url',
+        default = '',
+        description = 'input svn local url for project'
+        )
+
+    remote_url: StringProperty(
+        name = 'Remote Url',
+        default = '',
+        description = 'input svn remote url for project'
+        )
+
+
+    @classmethod
+    def poll(cls, context):
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0 and kitsu.current_user[1] == 'admin'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    # def draw(self, context):
+    #     layout = self.layout
+    #     row = layout.row()
+    #     ####### projects menu  #####################
+    #     row.menu("nagato.select_project", text = 'dswsf')
+    #     row.operator('nagato.svn_url')
+
+    def execute(self, context):
+        project = gazu.project.get_project_by_name(kitsu.current_project[0])
+        project_id = project['id']
+        print(project_id)
+        print(kitsu.current_user[1])
+        gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
+        gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})
+        return{'FINISHED'}
+
 
 ##########################MENU############################
 class NAGATO_MT_ProjectFiles(Menu):
@@ -398,6 +440,7 @@ class NAGATO_MT_ProjectFiles(Menu):
         layout.operator('nagato.check_out', text= 'download project files')
         layout.separator()
         layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
+        layout.operator('nagato.get_ref', text= 'get refernce images')
         layout.separator()
         layout.operator('nagato.revert', icon='LOOP_BACK')
         layout.operator('nagato.resolve', icon = 'OUTLINER_DATA_GREASEPENCIL')
@@ -415,7 +458,8 @@ classes = [
     OBJECT_OT_NagatoCleanUp,
     OBJECT_OT_NagatoCheckOut,
     OBJECT_OT_ConsolidateMaps,
-    NAGATO_MT_ProjectFiles
+    NAGATO_MT_ProjectFiles,
+    OBJECT_OT_NagatoSvnUrl
 ]
         
         

@@ -41,7 +41,7 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
         col.operator('nagato.check_out', text= 'download project files',icon = 'IMPORT')
         # row.alignment = 'LEFT'
         col.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
-        
+        col.operator('nagato.get_ref', text= 'get refernce images')
 
 class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -173,10 +173,11 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = 'nagato'
-    user = os.environ.get('homepath').replace("\\","/")
+    user = os.environ.get('homepath') #.replace("\\","/")
     local_host_url: StringProperty(
         name="Local url of server",
-        default='http://myAddress/api',
+        # default='http://myAddress/api',
+        default='https://studio.eaxum.com/api',
     )
 
     remote_host_url: StringProperty(
@@ -188,14 +189,95 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         name="Project mounting point",
         default='C:' + user,
     )
+    
+    #file tree properties
+    root: StringProperty(
+        name="Root",
+        default='projects',
+    )
+      # folder paths
+    asset_path: StringProperty(
+        name="Asset Path",
+        default='<Project>/lib/<AssetType>',
+    )
+    shot_path: StringProperty(
+        name="Shot Path",
+        default='<Project>/scenes/<Sequence>/<Shot>',
+    )
+    sequence_path: StringProperty(
+        name="Sequence Path",
+        default='<Project>/sequences/<Sequence>/<TaskType>',
+    )
+    scenes_path: StringProperty(
+        name="Scenes Path",
+        default='<Project>/scenes/<Sequence>/<Scene>/<TaskType>',
+    )
+        # file name
+    asset_name: StringProperty(
+        name="Asset Name",
+        default='<Asset>',
+    )
+    shot_name: StringProperty(
+        name="Shot Name",
+        default='<Sequence>_<Shot>',
+    )
+    sequence_name: StringProperty(
+        name="Sequence Name",
+        default='<Sequence>',
+    )
+    scenes_name: StringProperty(
+        name="Scenes Name",
+        default='<Scene>',
+    )
+    
+
+
+
 
     def draw(self, context):
         layout = self.layout
+        box = layout.box()
         # layout.label(text="Nagato Preferences")
-        layout.prop(self, "local_host_url")
-        layout.prop(self, "remote_host_url")
-        layout.prop(self, "project_mount_point")
+        box.prop(self, "local_host_url")
+        box.prop(self, "remote_host_url")
+        box.prop(self, "project_mount_point")
+        layout = self.layout
         layout.operator('nagato.login')
+
+        ####### projects menu  #####################
+        layout.label(text="Admin Users Setting:")
+        r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
+        row = layout.row()
+        row.enabled = r == 'yes'
+        row.alignment = 'LEFT'
+
+        if len(nagato.kitsu.current_project) == 0:
+            project_label = 'select project'
+        else:
+            project_label = nagato.kitsu.current_project[0]
+        row.menu("nagato.select_project", text = project_label)
+        row = layout.row()
+        row.alignment = 'LEFT'
+        row.operator('nagato.svn_url')
+
+        # set kitsu file tree
+        box = layout.box()
+        box.label(text="root")
+        box.prop(self, "root")
+        box_2 = box.box()
+        box_2.label(text="folder path:")
+        box_2.prop(self, "asset_path")
+        box_2.prop(self, "shot_path")
+        box_2.prop(self, "sequence_path")
+        box_2.prop(self, "scenes_path")
+        box_3 = box.box()
+        box_3.label(text="file name:")
+        box_3.prop(self, "asset_name")
+        box_3.prop(self, "shot_name")
+        box_3.prop(self, "sequence_name")
+        box_3.prop(self, "scenes_name")
+        # layout = self.layout
+        # layout.operator('nagato.login')
 
 
 # registration

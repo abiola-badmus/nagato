@@ -66,11 +66,12 @@ def dependecy(directory, destination):
 
 
 def move_dependecies():
+    if bpy.utils.script_path_pref() != None:
+        pref_directory_pysvn = bpy.utils.script_path_pref() + '/addons/nagato/pysvn'
+        pref_directory_gazu = bpy.utils.script_path_pref() + '/addons/nagato/gazu'
     user_directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
-    pref_directory_pysvn = bpy.utils.script_path_pref() + '/addons/nagato/pysvn'
-    destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
     user_directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
-    pref_directory_gazu = bpy.utils.script_path_pref() + '/addons/nagato/gazu'
+    destination_pysvn = bpy.app.binary_path_python + '/../../lib/site-packages/pysvn'
     destination_gazu = bpy.app.binary_path_python + '/../../lib/site-packages/gazu'
     if is_admin():
         try:
