@@ -244,40 +244,41 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         layout = self.layout
         layout.operator('nagato.login')
 
-        ####### projects menu  #####################
-        layout.label(text="Admin Users Setting:")
-        r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
-        row = layout.row()
-        row.enabled = r == 'yes'
-        row.alignment = 'LEFT'
+        ####### admin user settings  #####################
+        if len(nagato.kitsu.current_user) > 1 and nagato.kitsu.current_user[1] == 'admin':
+            layout.label(text="Admin Users Setting:")
+            r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
+            row = layout.row()
+            row.enabled = r == 'yes'
+            row.alignment = 'LEFT'
 
-        if len(nagato.kitsu.current_project) == 0:
-            project_label = 'select project'
-        else:
-            project_label = nagato.kitsu.current_project[0]
-        row.menu("nagato.select_project", text = project_label)
-        row = layout.row()
-        row.alignment = 'LEFT'
-        row.operator('nagato.svn_url')
+            if len(nagato.kitsu.current_project) == 0:
+                project_label = 'select project'
+            else:
+                project_label = nagato.kitsu.current_project[0]
+            row.menu("nagato.select_project", text = project_label)
+            row = layout.row()
+            row.alignment = 'LEFT'
+            row.operator('nagato.svn_url')
 
-        # set kitsu file tree
-        box = layout.box()
-        box.label(text="root")
-        box.prop(self, "root")
-        box_2 = box.box()
-        box_2.label(text="folder path:")
-        box_2.prop(self, "asset_path")
-        box_2.prop(self, "shot_path")
-        box_2.prop(self, "sequence_path")
-        box_2.prop(self, "scenes_path")
-        box_3 = box.box()
-        box_3.label(text="file name:")
-        box_3.prop(self, "asset_name")
-        box_3.prop(self, "shot_name")
-        box_3.prop(self, "sequence_name")
-        box_3.prop(self, "scenes_name")
-        # layout = self.layout
-        layout.operator('nagato.set_file_tree', text='apply file tree')
+            # set kitsu file tree
+            box = layout.box()
+            box.label(text="root")
+            box.prop(self, "root")
+            box_2 = box.box()
+            box_2.label(text="folder path:")
+            box_2.prop(self, "asset_path")
+            box_2.prop(self, "shot_path")
+            box_2.prop(self, "sequence_path")
+            box_2.prop(self, "scenes_path")
+            box_3 = box.box()
+            box_3.label(text="file name:")
+            box_3.prop(self, "asset_name")
+            box_3.prop(self, "shot_name")
+            box_3.prop(self, "sequence_name")
+            box_3.prop(self, "scenes_name")
+            # layout = self.layout
+            layout.operator('nagato.set_file_tree', text='apply file tree')
 
 
 # registration

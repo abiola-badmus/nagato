@@ -465,33 +465,55 @@ class NAGATO_OT_GetRefImg(Operator):
     bl_description = 'get reference images'
 
     def execute(self, context):
+        project = gazu.project.get_project_by_name(current_project[0])
+        project_id = project['id']
         mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-        file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
-        path = file_root[0].split(mount_point, 1)[1].split('/', 3)
-        root = os.path.join(mount_point, path[1], path[2])
-        refs_path = os.path.join(root, 'refs')
+        project_root = os.path.join(mount_point, context.preferences.addons['nagato'].preferences.root)
+        project_name = current_project[0]
+        file_name = os.path.splitext(os.path.basename(bpy.context.blend_data.filepath))[0] 
+        refs_path = os.path.join(project_root, project_name, 'refs')
+        dimension = gazu.asset.get_asset_by_name(project_id, file_name)['data']['dimension']
+        height = int(dimension.split('x')[0])
+        if 'refs' not in bpy.data.collections:
+            bpy.data.collections.new('refs')
+            collection = bpy.data.collections['refs']
+        if 'refs' not in bpy.context.scene.collection.children:
+            bpy.context.scene.collection.children.link(collection)
+        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children['refs']
         for image in os.listdir(refs_path):
-            if image.split('_', 1)[0] in {'blueprint'}:
-                bpy.ops.object.load_background_image(filepath=os.path.join(refs_path, image))
-                bpy.ops.transform.rotate(value=1.5708, orient_axis='X')
-                bpy.context.object.empty_display_size = 1.5
-                bpy.context.object.empty_image_offset[1] = 0
-                bpy.context.object.show_empty_image_perspective = False
-
-
-
-
+            if file_name == image.split('_', 2)[1]:
+                if image.split('_', 1)[0] in {'blueprint'}:
+                    if os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'right', 'left', 'front', 'back'}:
+                        bpy.ops.object.load_background_image(filepath=os.path.join(refs_path, image))
+                        bpy.ops.transform.rotate(value=1.5708, orient_axis='X')
+                        bpy.context.object.empty_display_size = height
+                        bpy.context.object.empty_image_offset[1] = 0
+                        bpy.context.object.show_empty_image_perspective = False
+                    if  os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'right'}:
+                        bpy.ops.transform.rotate(value=1.5708, orient_axis='Z')
+                        bpy.context.object.name = 'right'
+                    elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'left'}:
+                        bpy.ops.transform.rotate(value=-1.5708, orient_axis='Z')
+                        bpy.context.object.name = 'left'
+                    elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'back'}:
+                        bpy.ops.transform.rotate(value=3.14159, orient_axis='Z')
+                        bpy.context.object.name = 'back'
+                    elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'front'}:
+                        bpy.context.object.name = 'front'
         return{'FINISHED'}
 
 
 class OBJECT_OT_NagatoSetFileTree(Operator):
-    bl_label = 'set file tree'
+    bl_label = 'set file tree?'
     bl_idname = 'nagato.set_file_tree'
     bl_description = 'set file tree'
 
     @classmethod
     def poll(cls, context):
         return current_user[0] != 'NOT LOGGED IN' and len(current_project) != 0 and current_user[1] == 'admin'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
         root = context.preferences.addons['nagato'].preferences.root
@@ -521,7 +543,7 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
         project = gazu.project.get_project_by_name(current_project[0])
         project_id = project['id']
         gazu.files.update_project_file_tree(project_id, file_tree)
-
+        self.report({'INFO'}, 'file tree applied')
         return{'FINISHED'}
 
 
