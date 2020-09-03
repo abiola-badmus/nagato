@@ -176,8 +176,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     user = os.environ.get('homepath') #.replace("\\","/")
     local_host_url: StringProperty(
         name="Local url of server",
-        # default='http://myAddress/api',
-        default='https://studio.eaxum.com/api',
+        default='http://myAddress/api',
     )
 
     remote_host_url: StringProperty(
