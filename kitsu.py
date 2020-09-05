@@ -461,6 +461,7 @@ class NAGATO_OT_GetRefImg(Operator):
     bl_label = 'Get Reference images'
     bl_idname = 'nagato.get_ref'
     bl_description = 'get reference images'
+    bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         project = gazu.project.get_project_by_name(current_project[0])
@@ -471,7 +472,7 @@ class NAGATO_OT_GetRefImg(Operator):
         file_name = os.path.splitext(os.path.basename(bpy.context.blend_data.filepath))[0] 
         refs_path = os.path.join(project_root, project_name, 'refs')
         dimension = gazu.asset.get_asset_by_name(project_id, file_name)['data']['dimension']
-        height = int(dimension.split('x')[0])
+        height = float(dimension.split('x')[0])
         if 'refs' not in bpy.data.collections:
             bpy.data.collections.new('refs')
             collection = bpy.data.collections['refs']
@@ -479,7 +480,7 @@ class NAGATO_OT_GetRefImg(Operator):
             bpy.context.scene.collection.children.link(collection)
         bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children['refs']
         for image in os.listdir(refs_path):
-            if file_name == image.split('_', 2)[1]:
+            if file_name == '_'.join(image.split('_')[1:-1]):
                 if image.split('_', 1)[0] in {'blueprint'}:
                     if os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'right', 'left', 'front', 'back'}:
                         bpy.ops.object.load_background_image(filepath=os.path.join(refs_path, image))
@@ -490,14 +491,24 @@ class NAGATO_OT_GetRefImg(Operator):
                     if  os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'right'}:
                         bpy.ops.transform.rotate(value=1.5708, orient_axis='Z')
                         bpy.context.object.name = 'right'
+                        bpy.context.object.hide_select = True
                     elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'left'}:
                         bpy.ops.transform.rotate(value=-1.5708, orient_axis='Z')
                         bpy.context.object.name = 'left'
+                        bpy.context.object.hide_select = True
                     elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'back'}:
                         bpy.ops.transform.rotate(value=3.14159, orient_axis='Z')
                         bpy.context.object.name = 'back'
+                        bpy.context.object.hide_select = True
                     elif os.path.splitext(image.rsplit('_', 1)[-1])[0] in {'front'}:
                         bpy.context.object.name = 'front'
+                        bpy.context.object.hide_select = True
+            if file_name == os.path.splitext(image.split('_', 1)[-1])[0]:
+                if image.split('_', 1)[0] in {'ref'}:
+                    bpy.ops.object.load_reference_image(filepath=os.path.join(refs_path, image))
+                    bpy.ops.transform.rotate(value=1.5708, orient_axis='X')
+                    bpy.context.object.name = os.path.splitext(image)[0]
+                    bpy.context.object.empty_display_size = height
         return{'FINISHED'}
 
 

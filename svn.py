@@ -297,15 +297,6 @@ class OBJECT_OT_ConsolidateMaps(Operator):
         return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
     def execute(self, context):
-        # bpy.ops.file.make_paths_relative()
-        # bpy.ops.file.pack_all()
-        # images = bpy.data.images
-
-        # for image in images:
-        #     if image.name != 'Viewer Node':
-        #          if image.name != 'Render Result':
-        #              image.packed_files[image.filepath].filepath = '//maps/' + image.name_full
-        # bpy.ops.file.unpack_all(method='USE_ORIGINAL')
         try:
             bpy.ops.file.make_paths_relative()
             images = bpy.data.images
