@@ -295,8 +295,6 @@ class NAGATO_OT_OpenFile(Operator):
             status = 0
         return status == 1
     
-    # def invoke(self, context, event):
-    #     return context.window_manager.invoke_confirm(self, event)
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
@@ -305,13 +303,10 @@ class NAGATO_OT_OpenFile(Operator):
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
-        # scene = context.scene
         mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
         task_list_index = bpy.context.scene.tasks_idx
         active_id = filtered_todo[task_list_index]['id']
-        # user = os.environ.get('homepath').replace("\\","/")
         file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
-        print(filtered_todo)
         if filtered_todo[task_list_index]['task_type_name'].casefold() in {'lighting', 'rendering', 'compositing'}:
             directory = file_path + '_lighting.blend'
         elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'layout', 'previz'}:
@@ -333,16 +328,6 @@ class NAGATO_OT_OpenFile(Operator):
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
  
-
-class NAGATO_OT_DoubleClickOpen(Operator):
-    bl_label = 'open'
-    bl_idname = 'nagato.open'
-    bl_description = 'opens active selected task'
-    
-    def execute(self, context):
-        
-        return{'FINISHED'}
-
 
 class NAGATO_OT_SetStatus(Operator):
     bl_label = 'status'
