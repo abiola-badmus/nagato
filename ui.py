@@ -76,6 +76,8 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll = row.column()
         coll.operator('nagato.login', icon = 'USER')   
         coll = row.column()
+        coll.operator('nagato.logout', icon = 'USER')   
+        coll = row.column()
         coll.operator('nagato.refresh', icon= 'FILE_REFRESH', text= '')
         
         ####### projects menu  #####################
