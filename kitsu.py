@@ -3,10 +3,13 @@ import os
 import time
 import json
 import gazu
+from . import profile
 from gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
+
+NagatoProfile = profile.NagatoProfile
 time_queue = [0, 3]
 current_user = ['NOT LOGGED IN']
 remote_host = ['None']
@@ -147,21 +150,40 @@ class NAGATO_OT_Login(Operator):
     
     def execute(self, context):
         # scene = context.scene
+        
         try:
             current_user.clear()
             remote_host.clear()
             if self.remote_bool == False:
+                host = context.preferences.addons['nagato'].preferences.local_host_url
                 bpy.ops.nagato.set_local_host()
-                gazu.log_in(self.user_name, self.password)
+                token = gazu.log_in(self.user_name, self.password)
+                NagatoProfile.host = host
+                NagatoProfile.login = token['login']
+                NagatoProfile.user = token['user']
+                NagatoProfile.access_token = token['access_token']
+                NagatoProfile.refresh_token = token['refresh_token']
+                NagatoProfile.ldap = token['ldap']
+                NagatoProfile.save_json()
+
                 remote_host.append(False)
-                current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Local Host')
-                current_user.append(f'{gazu.user.client.get_current_user()["role"]}')
+                current_user.append(f'{gazu.client.get_current_user()["full_name"]} - Local Host')
+                current_user.append(f'{gazu.client.get_current_user()["role"]}')
             else:
+                host = context.preferences.addons['nagato'].preferences.remote_host_url
                 bpy.ops.nagato.set_remote_host()
-                gazu.log_in(self.user_name, self.password)
+                token = gazu.log_in(self.user_name, self.password)
+                NagatoProfile.host = host
+                NagatoProfile.login = token['login']
+                NagatoProfile.user = token['user']
+                NagatoProfile.access_token = token['access_token']
+                NagatoProfile.refresh_token = token['refresh_token']
+                NagatoProfile.ldap = token['ldap']
+                NagatoProfile.save_json()
+                
                 remote_host.append(True)
-                current_user.append(f'{gazu.user.client.get_current_user()["full_name"]} - Remote Host')
-                current_user.append(f'{gazu.user.client.get_current_user()["role"]}')
+                current_user.append(f'{gazu.client.get_current_user()["full_name"]} - Remote Host')
+                current_user.append(f'{gazu.client.get_current_user()["role"]}')
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
@@ -183,11 +205,35 @@ class NAGATO_OT_Login(Operator):
             self.report({'WARNING'}, 'invalid host url')
             current_user.append('NOT LOGGED IN')
             remote_host.append('None')
-        except Exception:
-            self.report({'WARNING'}, 'something went wrong.')
+        except Exception as err:
+            self.report({'WARNING'}, f'something went wrong. {err}')
             current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         return{'FINISHED'}
+
+
+class NAGATO_OT_Logout(Operator):
+    bl_label = 'Log out'
+    bl_idname = 'nagato.logout'
+    bl_description = 'log out'  
+
+    @classmethod
+    def poll(cls, context):
+        return  current_user[0] != 'NOT LOGGED IN'  
+    
+    def execute(self, context):
+        try:
+            gazu.log_out()
+            NagatoProfile.reset()
+            global current_user
+            current_user = ['NOT LOGGED IN']
+            bpy.ops.nagato.refresh()
+            self.report({'INFO'}, 'logged out')
+            return{'FINISHED'}
+        except NotAuthenticatedException:
+            current_user = ['NOT LOGGED IN']
+            return{'FINISHED'}
+            
 
 
 class NAGATO_OT_Refresh(Operator):
@@ -215,8 +261,10 @@ class NAGATO_OT_Refresh(Operator):
                if p not in project_names:
                    project_names.append(p)
             self.report({'INFO'}, 'Refreshed')
-        except:
+        except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in')
+            global current_user
+            current_user = ['NOT LOGGED IN']
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
@@ -577,6 +625,7 @@ classes = [
         NAGATO_OT_SetLocalHost,
         NAGATO_OT_SetRemoteHost,
         NAGATO_OT_Login,
+        NAGATO_OT_Logout,
         NAGATO_OT_Refresh,
         MyTasks,
         TASKS_UL_list,
@@ -595,6 +644,22 @@ classes = [
     
 # registration
 def register():
+    profile.register()
+    active_user_profile = NagatoProfile.read_json()
+    if active_user_profile['login'] == True:
+        try:
+            gazu.client.set_tokens(active_user_profile)
+            gazu.client.set_host(active_user_profile['host'])
+            gazu.client.get_current_user()
+            current_user.clear()
+            current_user.append(f"{active_user_profile['user']['full_name']} - Local Host")
+            current_user.append(f"{active_user_profile['user']['role']}")
+        except NotAuthenticatedException:
+            NagatoProfile.reset()
+        except ConnectionError:
+            NagatoProfile.reset()
+
+
     for cls in classes:
         bpy.utils.register_class(cls)   
     bpy.types.Scene.tasks = bpy.props.CollectionProperty(type=MyTasks)
