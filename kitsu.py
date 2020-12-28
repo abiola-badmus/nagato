@@ -8,6 +8,7 @@ from gazu.exception import NotAuthenticatedException, ParameterException, Method
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
+from configparser import ConfigParser, NoOptionError
 
 NagatoProfile = profile.NagatoProfile
 time_queue = [0, 3]
@@ -54,6 +55,38 @@ def double_click(self, context):
     else:
         print('no')
 
+def write_config(file_directory, config_parser):
+    '''
+        write data from a configuration parser
+        to file
+    '''
+    with open(file_directory, 'w') as f:
+        config_parser.write(f)
+
+def load_config(file_directory, config_parser):
+    '''
+        load data from a configuration file 
+        into a configuration parser instance
+    '''
+    with open(file_directory, 'r') as f:
+        data = f.read()
+    config_parser.read_string(data)
+
+def task_file_directory(blend_file_path, file_map_parser, task_type):
+    try:
+        task_type_map = file_map_parser.get('file_map', task_type).lower()
+        if task_type_map == 'base':
+            directory = f'{blend_file_path}.blend'
+            return directory
+        elif task_type_map == 'none':
+            pass
+        else:
+             directory = f'{blend_file_path}_{task_type_map}.blend'
+             return directory
+    except NoOptionError:
+        return None
+        # directory = f'{blend_file_path}_{task_type}.blend'
+        # file_map_parser.set('file_map', task_type, task_type)
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
     tasks_idx: IntProperty()
@@ -351,26 +384,34 @@ class NAGATO_OT_OpenFile(Operator):
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
+        file_map_parser = ConfigParser()
         mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
         task_list_index = bpy.context.scene.tasks_idx
         active_id = filtered_todo[task_list_index]['id']
         file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
-        if filtered_todo[task_list_index]['task_type_name'].casefold() in {'lighting', 'rendering', 'compositing'}:
-            directory = file_path + '_lighting.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'layout', 'previz'}:
-            directory = file_path + '_layout.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'fx'}:
-            directory = file_path + '_fx.blend'
-        elif filtered_todo[task_list_index]['task_type_name'].casefold() in {'anim', 'animation'}:
-            directory = file_path + '_anim.blend'
+        task_type = filtered_todo[task_list_index]['task_type_name']
+        project_folder = os.path.join(file_path.split(current_project[0].lower(), 1)[0], current_project[0].lower())
+        file_map_dir = os.path.join(project_folder, '.conf/file_map')
+
+        if not os.path.isdir(project_folder):
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        if not os.path.isfile(file_map_dir):
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+        load_config(file_map_dir, file_map_parser)
+        directory = task_file_directory(blend_file_path=file_path,
+                                        file_map_parser=file_map_parser,
+                                        task_type=task_type)
+        if directory:
+            try:
+                if self.save_bool == True:
+                    bpy.ops.wm.save_mainfile()
+                bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
+            except RuntimeError as err:
+                self.report({'WARNING'}, f'{err}')
         else:
-            directory = file_path + '.blend'
-        try:
-            if self.save_bool == True:
-                bpy.ops.wm.save_mainfile()
-            bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
-        except:
-            self.report({'WARNING'}, 'file path incorrect, check file tree')
+             self.report({'WARNING'}, 'no file for task, check task file map')
         bpy.context.scene.tasks_idx = task_list_index
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
