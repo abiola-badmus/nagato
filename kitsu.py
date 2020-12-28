@@ -222,13 +222,18 @@ class NAGATO_OT_Logout(Operator):
         return  current_user[0] != 'NOT LOGGED IN'  
     
     def execute(self, context):
-        gazu.log_out()
-        NagatoProfile.reset()
-        global current_user
-        current_user = ['NOT LOGGED IN']
-        bpy.ops.nagato.refresh()
-        self.report({'INFO'}, 'logged out')
-        return{'FINISHED'}
+        try:
+            gazu.log_out()
+            NagatoProfile.reset()
+            global current_user
+            current_user = ['NOT LOGGED IN']
+            bpy.ops.nagato.refresh()
+            self.report({'INFO'}, 'logged out')
+            return{'FINISHED'}
+        except NotAuthenticatedException:
+            current_user = ['NOT LOGGED IN']
+            return{'FINISHED'}
+            
 
 
 class NAGATO_OT_Refresh(Operator):
@@ -256,8 +261,10 @@ class NAGATO_OT_Refresh(Operator):
                if p not in project_names:
                    project_names.append(p)
             self.report({'INFO'}, 'Refreshed')
-        except:
+        except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in')
+            global current_user
+            current_user = ['NOT LOGGED IN']
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
