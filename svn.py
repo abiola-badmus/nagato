@@ -10,7 +10,7 @@ from bpy.types import (
 from bpy.props import (StringProperty)
 import pysvn
 import gazu
-from . import kitsu
+from . import kitsu, nagato_icon
 
 # if len(nagato.kitsu.current_project) != 0:
     # url = 
@@ -279,7 +279,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
             else:
                 self.report({'WARNING'}, "Directory is not empty and not under version control")
             return{'FINISHED'}
-        except TypeError:
+        except (TypeError, KeyError):
             self.report({'WARNING'}, "svn url not set")
             return{'FINISHED'}
 
@@ -420,15 +420,15 @@ class NAGATO_MT_ProjectFiles(Menu):
     def draw(self, context):
         layout = self.layout
         layout.operator('nagato.add', icon = 'ADD')
-        layout.separator()
-        layout.operator('nagato.update_all', text= 'update all files')
-        layout.operator('nagato.check_out', text= 'download project files')
+        # layout.separator()
+        # layout.operator('nagato.update_all', text= 'update all files')
+        # layout.operator('nagato.check_out', text= 'download project files')
         layout.separator()
         layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
-        layout.operator('nagato.get_ref', text= 'get refernce images')
+        layout.operator('nagato.get_ref', text= 'get refernce images', icon='IMAGE_REFERENCE')
         layout.separator()
         layout.operator('nagato.revert', icon='LOOP_BACK')
-        layout.operator('nagato.resolve', icon = 'OUTLINER_DATA_GREASEPENCIL')
+        layout.operator('nagato.resolve', icon_value = nagato_icon.icon('resolve_conflict'))
         layout.operator('nagato.clean_up', icon = 'BRUSH_DATA')
 
 

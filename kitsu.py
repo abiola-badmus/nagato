@@ -270,7 +270,7 @@ class NAGATO_OT_Logout(Operator):
 
 
 class NAGATO_OT_Refresh(Operator):
-    bl_label = 'Sasori Refresh'
+    bl_label = 'Nagato Refresh'
     bl_idname = 'nagato.refresh'
     bl_description = 'refresh kitsu data'    
 

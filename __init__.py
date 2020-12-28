@@ -18,6 +18,7 @@ import shutil
 import ctypes
 import filecmp
 import os.path
+from . import nagato_icon
 
 
 def is_admin():
@@ -107,6 +108,7 @@ for currentModuleFullName in modulesFullNames.values():
         setattr(globals()[currentModuleFullName], 'modulesNames', modulesFullNames)
 
 def register():
+    nagato_icon.init()
     for currentModuleName in modulesFullNames.values():
         if currentModuleName in sys.modules:
             if hasattr(sys.modules[currentModuleName], 'register'):
@@ -115,6 +117,7 @@ def register():
 
  
 def unregister():
+    nagato_icon.clear()
     for currentModuleName in modulesFullNames.values():
         if currentModuleName in sys.modules:
             if hasattr(sys.modules[currentModuleName], 'unregister'):
