@@ -112,7 +112,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
 
 
 class OBJECT_OT_NagatoUpdateAll(Operator):
-    bl_label = 'Update all files'
+    bl_label = 'Update project files'
     bl_idname = 'nagato.update_all'
     bl_description = 'Update all files in project repository'
     
@@ -129,7 +129,8 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
             for file in os.listdir(project):
                 try:
                     client.update(os.path.join(project, file))
-                    bpy.ops.wm.revert_mainfile()
+                    if bpy.data.is_saved:
+                        bpy.ops.wm.revert_mainfile()
                     self.report({'INFO'}, "Update Successful")
                 except pysvn._pysvn_3_7.ClientError as error:
                     self.report({'INFO'}, str(error))
