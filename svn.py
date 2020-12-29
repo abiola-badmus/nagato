@@ -39,9 +39,7 @@ class OBJECT_OT_NagatoAdd(Operator):
         try:
             status = client.status(f'{bpy.context.blend_data.filepath}')[0]
             if str(status.text_status) == 'unversioned':
-                print(status.text_status) 
                 r = str(status)[13:-1].replace('\\\\', '/')
-                print(r[1:-1])
                 client.add(r[1:-1])
                 self.report({'INFO'}, "File Added to Repository")
             else:
@@ -54,7 +52,7 @@ class OBJECT_OT_NagatoAdd(Operator):
 class OBJECT_OT_NagatoPublish(Operator):
     bl_label = 'Publish file'
     bl_idname = 'nagato.publish'
-    bl_description = 'Publish current file to project repository'
+    bl_description = 'Publish current open file to project repository'
     
     comment: StringProperty(
         name = 'comment',
@@ -78,7 +76,6 @@ class OBJECT_OT_NagatoPublish(Operator):
             client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
             statuses = client.status(bpy.path.abspath('//') + 'maps')
             for status in statuses:
-                print(str(status.text_status)) 
                 if str(status.text_status) in {'modified', 'added'}:
                     map_dir = str(status)[13:-1].replace('\\\\', '/')
                     client.checkin([map_dir[1:-1]], self.comment)
@@ -91,11 +88,11 @@ class OBJECT_OT_NagatoPublish(Operator):
 class OBJECT_OT_NagatoUpdate(Operator):
     bl_label = 'Update file'
     bl_idname = 'nagato.update'
-    bl_description = 'Update current file from project repository'
+    bl_description = 'Update current open file from project repository'
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -193,7 +190,6 @@ class OBJECT_OT_NagatoCleanUp(Operator):
         file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
         path = file_root[0].split(mount_point, 1)[1].split('/', 3)
         root = os.path.join(mount_point, path[1], path[2])
-        print(root)
         try:
             client.cleanup(root)
             self.report({'INFO'}, "clean up succesful")
@@ -243,14 +239,11 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                 repo_url = project_info['data']['local_svn_url']
             else:
                 repo_url = project_info['data']['remote_svn_url']
-            print(f'this {repo_url}')
-            print(f'this {project_info}')
             user = os.environ.get('homepath')
             user_f = user.replace("\\","/")
             root = context.preferences.addons['nagato'].preferences.root
             mount_point = os.path.join('C:', user_f, root)
-            file_path = os.path.join(mount_point, kitsu.current_project[0])
-            print(file_path)  
+            file_path = os.path.join(mount_point, kitsu.current_project[0])  
             client.set_default_username(self.username)
             client.set_default_password(self.password)
             if os.path.isdir(mount_point) == False:
@@ -366,9 +359,7 @@ class OBJECT_OT_ConsolidateMaps(Operator):
                 statuses = client.status(bpy.path.abspath('//') + 'maps')
                 for status in statuses:
                     if str(status.text_status) == 'unversioned':
-                        print(status.text_status) 
                         r = str(status)[13:-1].replace('\\\\', '/')
-                        print(r[1:-1])
                         client.add(r[1:-1])
                         client.checkin([r[1:-1]], f'commit consolidated maps')
                 self.report({'INFO'}, "Maps Colsolidated")
@@ -406,8 +397,6 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
     def execute(self, context):
         project = gazu.project.get_project_by_name(kitsu.current_project[0])
         project_id = project['id']
-        print(project_id)
-        print(kitsu.current_user[1])
         gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
         gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})
         return{'FINISHED'}

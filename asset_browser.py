@@ -55,8 +55,6 @@ class NAGATO_OT_AssetRefresh(Operator):
 
     def execute(self, context):
         scene = context.scene
-        print(current_project)
-        print(len(current_project))
         assets_data['chars'].clear()
         assets_data['envs'].clear()
         assets_data['props'].clear()
@@ -99,7 +97,6 @@ class NAGATO_OT_Assets(Operator):
         update_asset_list(scene)
         active_asset_type.clear()
         active_asset_type.append(self.asset_type)
-        print(active_asset_type)
         bpy.context.scene.update_tag()
         self.report({'INFO'}, 'Asset_type: ' + self.asset_type)
         return{'FINISHED'}

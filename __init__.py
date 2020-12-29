@@ -40,7 +40,6 @@ def are_dir_trees_equal(dir1, dir2):
         there were no errors while accessing the directories or files, 
         False otherwise.
    """
-    print('runing')
     dirs_cmp = filecmp.dircmp(dir1, dir2)
     if len(dirs_cmp.left_only)>0 or len(dirs_cmp.right_only)>0 or \
         len(dirs_cmp.funny_files)>0:
