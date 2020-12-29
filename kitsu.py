@@ -45,7 +45,6 @@ def update_list(scene):
         colection.tasks_idx = i
 
 def double_click(self, context):
-    print(self.tasks_idx)
     bpy.context.scene.tasks_idx = self.tasks_idx
     time_queue.pop(0)
     time_queue.append(time.time())
@@ -270,14 +269,12 @@ class NAGATO_OT_Logout(Operator):
 
 
 class NAGATO_OT_Refresh(Operator):
-    bl_label = 'Sasori Refresh'
+    bl_label = 'Nagato Refresh'
     bl_idname = 'nagato.refresh'
     bl_description = 'refresh kitsu data'    
 
     def execute(self, context):
         scene = context.scene
-        print(current_project)
-        print(len(current_project))
         todo.clear()
         task_tpyes.clear()
         project_names.clear()
@@ -360,9 +357,9 @@ class NAGATO_OT_Filter(Operator):
 
 
 class NAGATO_OT_OpenFile(Operator):
-    bl_label = 'open'
+    bl_label = 'open task file'
     bl_idname = 'nagato.open'
-    bl_description = 'opens active selected task'
+    bl_description = 'opens active selected task file'
 
     save_bool = bpy.props.BoolProperty()
 

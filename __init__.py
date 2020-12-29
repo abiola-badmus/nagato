@@ -18,6 +18,7 @@ import shutil
 import ctypes
 import filecmp
 import os.path
+from . import nagato_icon
 
 
 def is_admin():
@@ -39,7 +40,6 @@ def are_dir_trees_equal(dir1, dir2):
         there were no errors while accessing the directories or files, 
         False otherwise.
    """
-    print('runing')
     dirs_cmp = filecmp.dircmp(dir1, dir2)
     if len(dirs_cmp.left_only)>0 or len(dirs_cmp.right_only)>0 or \
         len(dirs_cmp.funny_files)>0:
@@ -107,6 +107,7 @@ for currentModuleFullName in modulesFullNames.values():
         setattr(globals()[currentModuleFullName], 'modulesNames', modulesFullNames)
 
 def register():
+    nagato_icon.init()
     for currentModuleName in modulesFullNames.values():
         if currentModuleName in sys.modules:
             if hasattr(sys.modules[currentModuleName], 'register'):
@@ -115,6 +116,7 @@ def register():
 
  
 def unregister():
+    nagato_icon.clear()
     for currentModuleName in modulesFullNames.values():
         if currentModuleName in sys.modules:
             if hasattr(sys.modules[currentModuleName], 'unregister'):

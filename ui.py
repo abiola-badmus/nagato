@@ -5,6 +5,7 @@ import nagato.asset_browser
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty)
 import os
+from . import nagato_icon
 
 
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
@@ -78,7 +79,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll = row.column()
         coll.operator('nagato.logout', icon = 'USER')   
         coll = row.column()
-        coll.operator('nagato.refresh', icon= 'FILE_REFRESH', text= '')
+        coll.operator('nagato.refresh', icon = 'FILE_REFRESH', text= '')
         
         ####### projects menu  #####################
         r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
@@ -91,6 +92,12 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         else:
             project_label = nagato.kitsu.current_project[0]
         row.menu("nagato.select_project", text = project_label)
+        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+        project_folder = os.path.join(mount_point, 'projects', project_label)
+        if os.path.isdir(project_folder):
+            row.operator('nagato.update_all', text= 'update all files', icon = 'IMPORT')
+        else:
+            row.operator('nagato.check_out', text= 'download project files', icon = 'IMPORT')
         
         ############# filter menu #############################
         rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
@@ -107,14 +114,14 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         row = layout.row()
         row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=6)
         col = row.column()
-        col.operator("nagato.open", icon='FILEBROWSER', text="")
+        col.operator("nagato.open", icon_value = nagato_icon.icon('open_file'), text="")
         col.enabled = text == "Task file"
         col.operator("nagato.update_status", icon='OUTLINER_DATA_GP_LAYER', text="")
         col.separator()
         col.menu("nagato.project_files", icon="DOWNARROW_HLT", text="")
         col.separator()
-        col.operator('nagato.publish', icon = 'EXPORT', text='')
-        col.operator('nagato.update', icon = 'IMPORT', text='')
+        col.operator('nagato.publish', icon_value = nagato_icon.icon('publish_file'), text='')
+        col.operator('nagato.update', icon_value = nagato_icon.icon('update_file'), text='')
 
         
         #lists the amount of task in selected category
