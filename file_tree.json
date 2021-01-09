@@ -1,6 +1,6 @@
 {
     "working": {
-        "mountpoint": "",
+        "mountpoint": "~",
         "root": "projects",
         "folder_path": {
             "asset": "<Project>/lib/<AssetType>",

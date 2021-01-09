@@ -8,28 +8,24 @@ from gazu.exception import NotAuthenticatedException, ParameterException, Method
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
+from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 
 NagatoProfile = profile.NagatoProfile
-time_queue = [0, 3]
-current_user = ['NOT LOGGED IN']
+# time_queue = [0, 3]
+
 remote_host = ['None']
-todo = []
-projects = []
-filtered_todo = []
 displayed_tasks = []
-project_names = []
-task_tpyes = []
 status = ['wip', 'todo', 'wfa']
 status_name = []
-
-# use to store data of active categories selected
-current_project = []
-current_filter = []
 current_status = []
 
 
 ########################### FUNCTIONS ################################ 
+@persistent
+def load_handler(dummy):
+    print("Load Handler: --------------", bpy.data.filepath)
+
 def update_list(scene):
     bpy.app.handlers.depsgraph_update_pre.remove(update_list)
 
@@ -97,21 +93,22 @@ class MyTasks(PropertyGroup):
 class TASKS_UL_list(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if len(current_filter) == 0:
+            active_task_type = NagatoProfile.active_task_type
+            if active_task_type == None:
                 task_icon='BLENDER'
-            elif current_filter[0].lower() in {'modeling'}:
+            elif active_task_type.lower() in {'modeling'}:
                 task_icon='CUBE'
-            elif current_filter[0].lower() in {'shading', 'texturing'}:
+            elif active_task_type.lower() in {'shading', 'texturing'}:
                 task_icon='SHADING_RENDERED'
-            elif current_filter[0].lower() in {'lighting'}:
+            elif active_task_type.lower() in {'lighting'}:
                 task_icon='OUTLINER_DATA_LIGHT'
-            elif current_filter[0].lower() in {'anim', 'animation'}:
+            elif active_task_type.lower() in {'anim', 'animation'}:
                 task_icon='ARMATURE_DATA'
-            elif current_filter[0].lower() in {'fx'}:
+            elif active_task_type.lower() in {'fx'}:
                 task_icon='SHADERFX'
-            elif current_filter[0].lower() in {'rigging'}:
+            elif active_task_type.lower() in {'rigging'}:
                 task_icon='BONE_DATA'
-            elif current_filter[0].lower() in {'layout'}:
+            elif active_task_type.lower() in {'layout'}:
                 task_icon='MOD_ARRAY'
             else:
                 task_icon='BLENDER'
@@ -174,7 +171,7 @@ class NAGATO_OT_Login(Operator):
     
     @classmethod
     def poll(cls, context):
-        return  current_user[0] == 'NOT LOGGED IN'
+        return not bool(NagatoProfile.user)
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -184,7 +181,6 @@ class NAGATO_OT_Login(Operator):
         # scene = context.scene
         
         try:
-            current_user.clear()
             remote_host.clear()
             if self.remote_bool == False:
                 host = context.preferences.addons['nagato'].preferences.local_host_url
@@ -199,8 +195,6 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.save_json()
 
                 remote_host.append(False)
-                current_user.append(f'{gazu.client.get_current_user()["full_name"]} - Local Host')
-                current_user.append(f'{gazu.client.get_current_user()["role"]}')
             else:
                 host = context.preferences.addons['nagato'].preferences.remote_host_url
                 bpy.ops.nagato.set_remote_host()
@@ -214,32 +208,25 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.save_json()
                 
                 remote_host.append(True)
-                current_user.append(f'{gazu.client.get_current_user()["full_name"]} - Remote Host')
-                current_user.append(f'{gazu.client.get_current_user()["role"]}')
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
             # update_list(scene)
-            self.report({'INFO'}, f"logged in as {current_user}")
+            self.report({'INFO'}, f"logged in as {NagatoProfile.user['full_name']}")
         except (NotAuthenticatedException, ServerErrorException, ParameterException):
             self.report({'WARNING'}, 'wrong credecials')
-            current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         except (MissingSchema, InvalidSchema, ConnectionError) as err:
             self.report({'WARNING'}, str(err))
-            current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
-            current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         except (MethodNotAllowedException, RouteNotFoundException):
             self.report({'WARNING'}, 'invalid host url')
-            current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         except Exception as err:
             self.report({'WARNING'}, f'something went wrong. {err}')
-            current_user.append('NOT LOGGED IN')
             remote_host.append('None')
         return{'FINISHED'}
 
@@ -251,19 +238,16 @@ class NAGATO_OT_Logout(Operator):
 
     @classmethod
     def poll(cls, context):
-        return  current_user[0] != 'NOT LOGGED IN'  
+        return NagatoProfile.user != None 
     
     def execute(self, context):
         try:
             gazu.log_out()
             NagatoProfile.reset()
-            global current_user
-            current_user = ['NOT LOGGED IN']
             bpy.ops.nagato.refresh()
             self.report({'INFO'}, 'logged out')
             return{'FINISHED'}
         except NotAuthenticatedException:
-            current_user = ['NOT LOGGED IN']
             return{'FINISHED'}
             
 
@@ -275,26 +259,13 @@ class NAGATO_OT_Refresh(Operator):
 
     def execute(self, context):
         scene = context.scene
-        todo.clear()
-        task_tpyes.clear()
-        project_names.clear()
         displayed_tasks.clear()
-        current_filter.clear()
-        current_project.clear()
         scene.tasks.clear()
         try:
-            for ob in gazu.user.all_tasks_to_do():
-                if ob not in todo:
-                    todo.append(ob)
-            for project in gazu.user.all_tasks_to_do():
-               p = project['project_name']
-               if p not in project_names:
-                   project_names.append(p)
+            NagatoProfile.refresh_tasks()
             self.report({'INFO'}, 'Refreshed')
         except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in')
-            global current_user
-            current_user = ['NOT LOGGED IN']
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
@@ -309,22 +280,10 @@ class NAGATO_OT_Projects(Operator):
     
     def execute(self, context):
         # scene = context.scene
-        current_project.clear()
-        current_filter.clear()
+        NagatoProfile.active_project = gazu.project.get_project_by_name(self.project)
         displayed_tasks.clear()
-        projects.clear()
-        task_tpyes.clear()
-        filtered_todo.clear()
-        for file in todo:
-            if file['project_name'] == self.project:
-                projects.append(file)
-        current_project.append(self.project)
         bpy.context.scene.update_tag()
-        bpy.app.handlers.depsgraph_update_pre.append(update_list)
-        for task in projects:
-            i = task['task_type_name']
-            if i not in task_tpyes:
-                task_tpyes.append(i) 
+        bpy.app.handlers.depsgraph_update_pre.append(update_list) 
         bpy.ops.nagato.assets_refresh()
         self.report({'INFO'}, 'Project: ' + self.project)
         return{'FINISHED'}
@@ -339,17 +298,14 @@ class NAGATO_OT_Filter(Operator):
     
     def execute(self, context):
         # scene = context.scene
-        current_filter.clear()
         displayed_tasks.clear()
-        filtered_todo.clear()
-        for file in projects:
+        for file in NagatoProfile.tasks[NagatoProfile.active_project['name']][self.filter]:
+            NagatoProfile.active_task_type = self.filter
             if file['task_type_name'] == self.filter:
                 if file['sequence_name'] == None:
                     displayed_tasks.append([file['entity_name'], file['task_status_short_name']])
                 else:
                     displayed_tasks.append([file['sequence_name'] + '_' + file['entity_name'], file['task_status_short_name']])
-                filtered_todo.append(file) 
-        current_filter.append(self.filter)
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         self.report({'INFO'}, 'filtered by ' + self.filter)
@@ -367,7 +323,7 @@ class NAGATO_OT_OpenFile(Operator):
     def poll(cls, context):
         try:
             task_list_index = bpy.context.scene.tasks_idx
-            filtered_todo[task_list_index]['id']
+            NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]['id']
             status = 1
         except:
             status = 0
@@ -382,13 +338,17 @@ class NAGATO_OT_OpenFile(Operator):
     
     def execute(self, context):
         file_map_parser = ConfigParser()
-        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
         task_list_index = bpy.context.scene.tasks_idx
-        active_id = filtered_todo[task_list_index]['id']
-        file_path = mount_point.replace("\\","/")  + gazu.files.build_working_file_path(active_id)
-        task_type = filtered_todo[task_list_index]['task_type_name']
-        project_folder = os.path.join(file_path.split(current_project[0].lower(), 1)[0], current_project[0].lower())
+        active_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]['id']
+        file_path = os.path.expanduser(gazu.files.build_working_file_path(active_id))
+        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
         file_map_dir = os.path.join(project_folder, '.conf/file_map')
+        print(NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]["entity_name"])
 
         if not os.path.isdir(project_folder):
             self.report({'WARNING'}, 'Project not downloaded, download project file')
@@ -404,7 +364,9 @@ class NAGATO_OT_OpenFile(Operator):
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
+                print(directory)
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
+                print('3.1')
             except RuntimeError as err:
                 self.report({'WARNING'}, f'{err}')
         else:
@@ -428,8 +390,8 @@ class NAGATO_OT_SetStatus(Operator):
         gazu.task.get_task_status_by_short_name(self.stat)
         s = gazu.task.get_task_status_by_short_name(self.stat)
         status_name.append(s)
-        task_list_index = bpy.context.scene.tasks_idx
-        filtered_todo[task_list_index]['id']
+        # task_list_index = bpy.context.scene.tasks_idx
+        # filtered_todo[task_list_index]['id']
         current_status.append(s['short_name'])
         self.report({'INFO'}, 'Status: ' + self.stat)
         return{'FINISHED'}
@@ -454,9 +416,12 @@ class NAGATO_OT_UpdateStatus(Operator):
     
     def draw(self, context):
         task_list_index = bpy.context.scene.tasks_idx
-        task_type = filtered_todo[task_list_index]['task_type_name']
-        entity_name = filtered_todo[task_list_index]['entity_name']
-        entity_sq_name = filtered_todo[task_list_index]['sequence_name']
+        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
+            [task_list_index]["entity_name"] #filtered_todo[task_list_index]['task_type_name']
+        entity_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
+            [task_list_index]["entity_name"] # filtered_todo[task_list_index]['entity_name']
+        entity_sq_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
+            [task_list_index]["entity_name"]# filtered_todo[task_list_index]['sequence_name']
         
         # if entity_name['sequence_name'] == None:
         #     displayed_tasks.append(file['entity_name'])
@@ -510,16 +475,18 @@ class NAGATO_OT_UpdateStatus(Operator):
         # scene = context.scene
         try:
             task_list_index = bpy.context.scene.tasks_idx
-            gazu.task.add_comment(filtered_todo[task_list_index]['id'], status_name[0], self.comment)
+            task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
+            gazu.task.add_comment(task['id'], status_name[0], self.comment)
             if status_name[0]['short_name'] == 'wfa':
                 bpy.ops.nagato.publish()
             displayed_tasks[task_list_index][1] = status_name[0]['short_name']
-            for item in todo:
-                if item['id'] == filtered_todo[task_list_index]['id']:
-                    item['task_status_short_name'] = status_name[0]['short_name']
-            for item in projects:
-                if item['id'] == filtered_todo[task_list_index]['id']:
-                    item['task_status_short_name'] = status_name[0]['short_name']  
+            task['task_status_short_name'] = status_name[0]['short_name']
+            # for item in todo:
+            #     if item['id'] == filtered_todo[task_list_index]['id']:
+            #         item['task_status_short_name'] = status_name[0]['short_name']
+            # for item in projects:
+            #     if item['id'] == filtered_todo[task_list_index]['id']:
+            #         item['task_status_short_name'] = status_name[0]['short_name']  
             bpy.context.scene.update_tag()
             bpy.app.handlers.depsgraph_update_pre.append(update_list)
             self.report({'INFO'}, "status updated")
@@ -535,11 +502,11 @@ class NAGATO_OT_GetRefImg(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        project = gazu.project.get_project_by_name(current_project[0])
+        project = gazu.project.get_project_by_name(NagatoProfile.active_project['name'])
         project_id = project['id']
         mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
         project_root = os.path.join(mount_point, context.preferences.addons['nagato'].preferences.root)
-        project_name = current_project[0]
+        project_name = NagatoProfile.active_project['name']
         file_name = os.path.splitext(os.path.basename(bpy.context.blend_data.filepath))[0] 
         refs_path = os.path.join(project_root, project_name, 'refs')
         dimension = gazu.asset.get_asset_by_name(project_id, file_name)['data']['dimension']
@@ -590,12 +557,13 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
 
     @classmethod
     def poll(cls, context):
-        return current_user[0] != 'NOT LOGGED IN' and len(current_project) != 0 and current_user[1] == 'admin'
+        return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
+        mountpoint = context.preferences.addons['nagato'].preferences.mountpoint
         root = context.preferences.addons['nagato'].preferences.root
         asset_path = context.preferences.addons['nagato'].preferences.asset_path
         shot_path = context.preferences.addons['nagato'].preferences.shot_path
@@ -607,6 +575,8 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
         scenes_name = context.preferences.addons['nagato'].preferences.scenes_name
         with open('file_tree.json', 'r') as data:
             file_tree = json.load(data)
+        #MOUNT_POINT
+        file_tree['working']['mountpoint'] = mountpoint
         #ROOT
         file_tree['working']['root'] = root
         #FOLDER PATHS
@@ -620,7 +590,7 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
         file_tree['working']['file_name']['sequence'] = sequence_name
         file_tree['working']['file_name']['scene'] = scenes_name
 
-        project = gazu.project.get_project_by_name(current_project[0])
+        project = gazu.project.get_project_by_name(NagatoProfile.active_project['name'])
         project_id = project['id']
         gazu.files.update_project_file_tree(project_id, file_tree)
         self.report({'INFO'}, 'file tree applied')
@@ -643,7 +613,7 @@ class NAGATO_MT_Projects(Menu):
     bl_idname = "nagato.select_project"
     
     def draw(self, context):
-        for project in project_names:
+        for project in NagatoProfile.tasks:
             layout = self.layout
             layout.operator('nagato.projects', text= project).project= project
 
@@ -653,9 +623,10 @@ class NAGATO_MT_FilterTask(Menu):
     bl_idname = "nagato.filter_tasks"
     
     def draw(self, context):
-        for task in task_tpyes:
+        
+        for task_type in NagatoProfile.tasks[NagatoProfile.active_project['name']]:
             layout = self.layout
-            layout.operator('nagato.filter', text= task).filter= task
+            layout.operator('nagato.filter', text= task_type).filter = task_type
        
 ############### all classes ####################    
 classes = [
@@ -689,9 +660,13 @@ def register():
             gazu.client.set_tokens(active_user_profile)
             gazu.client.set_host(active_user_profile['host'])
             gazu.client.get_current_user()
-            current_user.clear()
-            current_user.append(f"{active_user_profile['user']['full_name']} - Local Host")
-            current_user.append(f"{active_user_profile['user']['role']}")
+
+            NagatoProfile.host = active_user_profile['host']
+            NagatoProfile.login = active_user_profile['login']
+            NagatoProfile.user = active_user_profile['user']
+            NagatoProfile.access_token = active_user_profile['access_token']
+            NagatoProfile.refresh_token = active_user_profile['refresh_token']
+            NagatoProfile.ldap = active_user_profile['ldap']
         except NotAuthenticatedException:
             NagatoProfile.reset()
         except ConnectionError:
@@ -704,6 +679,8 @@ def register():
     bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
 
     bpy.app.handlers.depsgraph_update_pre.append(update_list)
+    # bpy.app.handlers.load_post.append(load_handler)
+    # bpy.app.handlers.load_factory_preferences_post.append(load_handler)
 
 def unregister():
     for cls in reversed(classes):

@@ -71,7 +71,10 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         #     # layout.label(text= f'user: {gazu.user.client.get_current_user()["full_name"]}')
         # except:
         #     layout.label(text= f'user: No Logged in user')
-        layout.label(text= f'user: {nagato.kitsu.current_user[0]}')                         
+        if nagato.kitsu.NagatoProfile.user == None:
+            layout.label(text= f'user: Not logged in')
+        else:
+            layout.label(text= f'user: {nagato.kitsu.NagatoProfile.user["full_name"]}')
         row = layout.row()
         row.alignment = 'LEFT'
         coll = row.column()
@@ -82,32 +85,37 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll.operator('nagato.refresh', icon = 'FILE_REFRESH', text= '')
         
         ####### projects menu  #####################
-        r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
+        # r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
         row = layout.row()
-        row.enabled = r == 'yes'
+        row.enabled = bool(nagato.kitsu.NagatoProfile.tasks)
         row.alignment = 'LEFT'
 
-        if len(nagato.kitsu.current_project) == 0:
-            project_label = 'select project'
+        if bool(nagato.kitsu.NagatoProfile.active_project):
+            project_label = nagato.kitsu.NagatoProfile.active_project['name']
         else:
-            project_label = nagato.kitsu.current_project[0]
+            project_label = 'select project'
         row.menu("nagato.select_project", text = project_label)
-        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-        project_folder = os.path.join(mount_point, 'projects', project_label)
+        if nagato.kitsu.NagatoProfile.active_project:
+            mount_point = nagato.kitsu.NagatoProfile.active_project['file_tree']['working']['mountpoint'] #context.preferences.addons['nagato'].preferences.project_mount_point
+            root = nagato.kitsu.NagatoProfile.active_project['file_tree']['working']['root']
+        else:
+            mount_point = 'None'
+            root = 'None'
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, project_label))
         if os.path.isdir(project_folder):
             row.operator('nagato.update_all', text= 'update all files', icon = 'IMPORT')
         else:
             row.operator('nagato.check_out', text= 'download project files', icon = 'IMPORT')
         
         ############# filter menu #############################
-        rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
+        # rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
         row = layout.row()
-        row.enabled = rf == 'yes'
+        row.enabled = bool(nagato.kitsu.NagatoProfile.active_project)
         row.alignment = 'LEFT'
-        if len(nagato.kitsu.current_filter) == 0:
+        if nagato.kitsu.NagatoProfile.active_task_type == None:
             filter_label = 'select filter'
         else:
-            filter_label = nagato.kitsu.current_filter[0]
+            filter_label = nagato.kitsu.NagatoProfile.active_task_type
         row.menu("nagato.filter_tasks", text = filter_label)
         
         ######### task list ######################################
@@ -193,12 +201,16 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         default='',
     )
 
-    project_mount_point: StringProperty(
-        name="Project mounting point",
-        default='C:' + user,
-    )
+    # project_mount_point: StringProperty(
+    #     name="Project mounting point",
+    #     default='C:' + user,
+    # )
     
     #file tree properties
+    mountpoint: StringProperty(
+        name="Mount Point",
+        default='~',
+    )
     root: StringProperty(
         name="Root",
         default='projects',
@@ -248,22 +260,22 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         # layout.label(text="Nagato Preferences")
         box.prop(self, "local_host_url")
         box.prop(self, "remote_host_url")
-        box.prop(self, "project_mount_point")
+        # box.prop(self, "project_mount_point")
         layout = self.layout
         layout.operator('nagato.login')
 
         ####### admin user settings  #####################
-        if len(nagato.kitsu.current_user) > 1 and nagato.kitsu.current_user[1] == 'admin':
+        if nagato.kitsu.NagatoProfile.user and nagato.kitsu.NagatoProfile.user['role'] == 'admin':
             layout.label(text="Admin Users Setting:")
-            r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
             row = layout.row()
-            row.enabled = r == 'yes'
+            row.enabled = bool(nagato.kitsu.NagatoProfile.tasks)
             row.alignment = 'LEFT'
 
-            if len(nagato.kitsu.current_project) == 0:
-                project_label = 'select project'
+            if bool(nagato.kitsu.NagatoProfile.active_project):
+                project_label = nagato.kitsu.NagatoProfile.active_project['name']
             else:
-                project_label = nagato.kitsu.current_project[0]
+                project_label = 'select project'
+
             row.menu("nagato.select_project", text = project_label)
             row = layout.row()
             row.alignment = 'LEFT'
@@ -271,6 +283,8 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 
             # set kitsu file tree
             box = layout.box()
+            box.label(text="mountpoint")
+            box.prop(self, "mountpoint")
             box.label(text="root")
             box.prop(self, "root")
             box_2 = box.box()

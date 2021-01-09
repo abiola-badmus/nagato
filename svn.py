@@ -11,19 +11,10 @@ from bpy.props import (StringProperty)
 import pysvn
 import gazu
 from . import kitsu, nagato_icon
-
-# if len(nagato.kitsu.current_project) != 0:
-    # url = 
-# else:
-#     url = 'no'
+from nagato.kitsu import NagatoProfile
 
 ########## operators ################################
 client = pysvn.Client()
-# def remote():
-#         if kitsu.remote_host[0] == True:
-#             return True
-#         else:
-#             return False
 
 class OBJECT_OT_NagatoAdd(Operator):
     bl_label = 'Add file to SVN'
@@ -65,12 +56,12 @@ class OBJECT_OT_NagatoPublish(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
         bpy.ops.wm.save_mainfile()
-        user = kitsu.current_user[0]
+        user = kitsu.NagatoProfile.user['full_name']
         
         try:
             client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
@@ -92,7 +83,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -115,17 +106,16 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
+        return bool(kitsu.NagatoProfile.user) and bool(kitsu.NagatoProfile.active_project)
 
     def execute(self, context):
-        user = os.environ.get('homepath')
-        user_f = user.replace("\\","/")
-        mount_point = 'C:' + user_f + '/projects/'
-        project = mount_point + kitsu.current_project[0]
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
         try:
-            for file in os.listdir(project):
+            for file in os.listdir(project_folder):
                 try:
-                    client.update(os.path.join(project, file))
+                    client.update(os.path.join(project_folder, file))
                     if bpy.data.is_saved:
                         bpy.ops.wm.revert_mainfile()
                     self.report({'INFO'}, "Update Successful")
@@ -229,11 +219,10 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
+        return bool(kitsu.NagatoProfile.user) and kitsu.NagatoProfile.active_project != None
 
     def execute(self, context):
-        # if len(kitsu.current_project) != 0:
-        project_info = gazu.project.get_project_by_name(kitsu.current_project[0])
+        project_info = NagatoProfile.active_project
         try:
             if self.remote_bool is False:
                 repo_url = project_info['data']['local_svn_url']
@@ -243,7 +232,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
             user_f = user.replace("\\","/")
             root = context.preferences.addons['nagato'].preferences.root
             mount_point = os.path.join('C:', user_f, root)
-            file_path = os.path.join(mount_point, kitsu.current_project[0])  
+            file_path = os.path.join(mount_point, kitsu.NagatoProfile.active_project['name'])  
             client.set_default_username(self.username)
             client.set_default_password(self.password)
             if os.path.isdir(mount_point) == False:
@@ -389,13 +378,13 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
 
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0 and kitsu.current_user[1] == 'admin'
+        return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        project = gazu.project.get_project_by_name(kitsu.current_project[0])
+        project = gazu.project.get_project_by_name(kitsu.NagatoProfile.active_project['name'])
         project_id = project['id']
         gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
         gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})

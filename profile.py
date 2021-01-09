@@ -1,5 +1,8 @@
 import os
-import bpy
+try:
+    import bpy
+except ModuleNotFoundError:
+    pass
 import gazu
 
 # Set/created upon register.
@@ -21,6 +24,10 @@ class NagatoProfile():
     access_token = ''
     refresh_token = ''
     ldap = False
+
+    tasks = dict()
+    active_project = None
+    active_task_type = None
 
     @classmethod
     def reset(cls):
@@ -53,6 +60,38 @@ class NagatoProfile():
         }
 
         cls.save_profile_data(jsonfile)
+
+    @classmethod
+    def refresh_tasks(cls):
+        tasks = cls.get_zou_tasks()
+        cls.tasks = cls.structure_task(tasks)
+        cls.active_project = None
+        cls.active_task_type = None
+
+    @staticmethod
+    def get_zou_tasks():
+        tasks = gazu.user.all_tasks_to_do()
+        return tasks
+
+    @classmethod
+    def group_task(cls, tasks:dict, fliter:str):
+        new_grouped_tasks = dict()
+        for task in tasks:
+            group_name = task[fliter]
+            if group_name not in new_grouped_tasks:
+                new_grouped_tasks[group_name] = [task]
+            else:
+                new_grouped_tasks[group_name].append(task)
+        return(new_grouped_tasks)
+    
+    @classmethod
+    def structure_task(cls, tasks):
+        tasks_by_projects = cls.group_task(tasks, 'project_name')
+        for project in tasks_by_projects:
+            project_tasks = tasks_by_projects[project]
+            project_tasks_by_type = cls.group_task(project_tasks, 'task_type_name')
+            tasks_by_projects[project] = project_tasks_by_type
+        return tasks_by_projects
 
     @staticmethod
     def _create_default_file():
@@ -120,10 +159,12 @@ class NagatoProfile():
             json.dump(profile, outfile, sort_keys=True)
 
 
+class NagatoTasks():
+    tasks = None
+
 
 def register():
     global profile_path, profile_file
-
     profile_path = bpy.utils.user_resource('CONFIG', 'nagato', create=True)
     # profile_path = 'C:/Users/Tanjiro/AppData/Roaming/Blender Foundation/Blender/2.83/config/nagato'
     profile_file = os.path.join(profile_path, 'profiles.json')
