@@ -10,11 +10,11 @@ from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
 from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
+import shutil
 
 NagatoProfile = profile.NagatoProfile
 # time_queue = [0, 3]
 
-remote_host = ['None']
 displayed_tasks = []
 status = ['wip', 'todo', 'wfa']
 status_name = []
@@ -181,7 +181,6 @@ class NAGATO_OT_Login(Operator):
         # scene = context.scene
         
         try:
-            remote_host.clear()
             if self.remote_bool == False:
                 host = context.preferences.addons['nagato'].preferences.local_host_url
                 bpy.ops.nagato.set_local_host()
@@ -193,8 +192,9 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.refresh_token = token['refresh_token']
                 NagatoProfile.ldap = token['ldap']
                 NagatoProfile.save_json()
-
-                remote_host.append(False)
+                svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
+                if os.path.isdir(svn_auth_cache):
+                    shutil.rmtree(svn_auth_cache)
             else:
                 host = context.preferences.addons['nagato'].preferences.remote_host_url
                 bpy.ops.nagato.set_remote_host()
@@ -206,8 +206,10 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.refresh_token = token['refresh_token']
                 NagatoProfile.ldap = token['ldap']
                 NagatoProfile.save_json()
-                
-                remote_host.append(True)
+                svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
+                if os.path.isdir(svn_auth_cache):
+                    shutil.rmtree(svn_auth_cache)
+
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
@@ -215,19 +217,14 @@ class NAGATO_OT_Login(Operator):
             self.report({'INFO'}, f"logged in as {NagatoProfile.user['full_name']}")
         except (NotAuthenticatedException, ServerErrorException, ParameterException):
             self.report({'WARNING'}, 'wrong credecials')
-            remote_host.append('None')
         except (MissingSchema, InvalidSchema, ConnectionError) as err:
             self.report({'WARNING'}, str(err))
-            remote_host.append('None')
         except OSError:
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
-            remote_host.append('None')
         except (MethodNotAllowedException, RouteNotFoundException):
             self.report({'WARNING'}, 'invalid host url')
-            remote_host.append('None')
         except Exception as err:
             self.report({'WARNING'}, f'something went wrong. {err}')
-            remote_host.append('None')
         return{'FINISHED'}
 
 
@@ -244,6 +241,9 @@ class NAGATO_OT_Logout(Operator):
         try:
             gazu.log_out()
             NagatoProfile.reset()
+            svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
+            if os.path.isdir(svn_auth_cache):
+                shutil.rmtree(svn_auth_cache)
             bpy.ops.nagato.refresh()
             self.report({'INFO'}, 'logged out')
             return{'FINISHED'}
@@ -481,12 +481,6 @@ class NAGATO_OT_UpdateStatus(Operator):
                 bpy.ops.nagato.publish()
             displayed_tasks[task_list_index][1] = status_name[0]['short_name']
             task['task_status_short_name'] = status_name[0]['short_name']
-            # for item in todo:
-            #     if item['id'] == filtered_todo[task_list_index]['id']:
-            #         item['task_status_short_name'] = status_name[0]['short_name']
-            # for item in projects:
-            #     if item['id'] == filtered_todo[task_list_index]['id']:
-            #         item['task_status_short_name'] = status_name[0]['short_name']  
             bpy.context.scene.update_tag()
             bpy.app.handlers.depsgraph_update_pre.append(update_list)
             self.report({'INFO'}, "status updated")
