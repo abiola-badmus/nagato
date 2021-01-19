@@ -291,14 +291,14 @@ class NagatoGenesis(bpy.types.AddonPreferences):
             box_2.label(text="folder path:")
             box_2.prop(self, "asset_path")
             box_2.prop(self, "shot_path")
-            box_2.prop(self, "sequence_path")
-            box_2.prop(self, "scenes_path")
+            # box_2.prop(self, "sequence_path")
+            # box_2.prop(self, "scenes_path")
             box_3 = box.box()
             box_3.label(text="file name:")
             box_3.prop(self, "asset_name")
             box_3.prop(self, "shot_name")
             box_3.prop(self, "sequence_name")
-            box_3.prop(self, "scenes_name")
+            # box_3.prop(self, "scenes_name")
             # layout = self.layout
             layout.operator('nagato.set_file_tree', text='apply file tree')
 
