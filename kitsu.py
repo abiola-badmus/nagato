@@ -567,7 +567,8 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
         shot_name = context.preferences.addons['nagato'].preferences.shot_name
         sequence_name = context.preferences.addons['nagato'].preferences.sequence_name
         scenes_name = context.preferences.addons['nagato'].preferences.scenes_name
-        with open('file_tree.json', 'r') as data:
+        file_tree_dir = os.path.join(os.path.dirname(__file__), 'file_tree.json')
+        with open(file_tree_dir, 'r') as data:
             file_tree = json.load(data)
         #MOUNT_POINT
         file_tree['working']['mountpoint'] = mountpoint
