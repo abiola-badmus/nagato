@@ -1,8 +1,9 @@
 import bpy
 import os
+from gazu.exception import NotAuthenticatedException
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
-from nagato.kitsu import current_project
+from nagato.kitsu import NagatoProfile
 assets_data = {
    'chars': [] , 'envs': [], 'props': []
 }
@@ -59,10 +60,13 @@ class NAGATO_OT_AssetRefresh(Operator):
         assets_data['envs'].clear()
         assets_data['props'].clear()
         try:
-            mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-            project_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/'
+            mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+            root = NagatoProfile.active_project['file_tree']['working']['root']
+            project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+            project_path = os.path.join(project_folder, 'lib')
+            print(project_path)
             for path in os.listdir(project_path):
-                for asset in os.listdir(project_path + path):
+                for asset in os.listdir(os.path.join(project_path, path)):
                     if path == 'chars':
                         if asset.rsplit('.', 1)[-1] == 'blend':
                             assets_data['chars'].append(asset.rsplit('.', 1)[0])
@@ -73,8 +77,10 @@ class NAGATO_OT_AssetRefresh(Operator):
                         if asset.rsplit('.', 1)[-1] == 'blend':
                             assets_data['props'].append(asset.rsplit('.', 1)[0])
             self.report({'INFO'}, 'Refreshed')
-        except:
+        except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in')
+        except FileNotFoundError:
+            self.report({'INFO'}, 'files not found')
         scene.assets.clear()
         bpy.context.scene.update_tag()
         return{'FINISHED'}
@@ -110,9 +116,11 @@ class NAGATO_OT_LinkAsset(Operator):
     def execute(self, context):
         asset_list_index = bpy.context.scene.assets_idx
         file_name = displayed_assets[asset_list_index]
-        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-        asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
-        blend_file = asset_path + '/' + file_name + '.blend'
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        asset_path = os.path.join(project_folder, 'lib', active_asset_type[0])
+        blend_file = os.path.join(asset_path, f'{file_name}.blend')
         section = "\\Collection\\"
         file_path = blend_file + section + file_name
         directory = blend_file + section
@@ -136,9 +144,11 @@ class NAGATO_OT_LinkSelectedAsset(Operator):
         for asset in bpy.context.scene.assets:
             if asset.multi_select:
                 file_name = asset.asset
-                mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-                asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
-                blend_file = asset_path + '/' + file_name + '.blend'
+                mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+                root = NagatoProfile.active_project['file_tree']['working']['root']
+                project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+                asset_path = os.path.join(project_folder, 'lib', active_asset_type[0])
+                blend_file = os.path.join(asset_path, f'{file_name}.blend')
                 section = "\\Collection\\"
                 file_path = blend_file + section + file_name
                 directory = blend_file + section
@@ -159,9 +169,11 @@ class NAGATO_OT_AppendAsset(Operator):
     def execute(self, context):
         asset_list_index = bpy.context.scene.assets_idx
         file_name = displayed_assets[asset_list_index]
-        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-        asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
-        blend_file = asset_path + '/' + file_name + '.blend'
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        asset_path = os.path.join(project_folder, 'lib', active_asset_type[0])
+        blend_file = os.path.join(asset_path, f'{file_name}.blend')
         section = "\\Collection\\"
         file_path = blend_file + section + file_name
         directory = blend_file + section
@@ -183,9 +195,11 @@ class NAGATO_OT_AppendSelectedAsset(Operator):
         for asset in bpy.context.scene.assets:
             if asset.multi_select:
                 file_name = asset.asset
-                mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
-                asset_path = mount_point.replace("\\","/") + '/' + 'projects' + '/' + current_project[0] + '/lib/' + active_asset_type[0]
-                blend_file = asset_path + '/' + file_name + '.blend'
+                mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+                root = NagatoProfile.active_project['file_tree']['working']['root']
+                project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+                asset_path = os.path.join(project_folder, 'lib', active_asset_type[0])
+                blend_file = os.path.join(asset_path, f'{file_name}.blend')
                 section = "\\Collection\\"
                 file_path = blend_file + section + file_name
                 directory = blend_file + section

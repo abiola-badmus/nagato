@@ -2,3 +2,6 @@ __pycache__
 .idea
 /test.py
 dist
+test*
+*.pyc
+.vscode/settings.json

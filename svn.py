@@ -11,19 +11,10 @@ from bpy.props import (StringProperty)
 import pysvn
 import gazu
 from . import kitsu, nagato_icon
-
-# if len(nagato.kitsu.current_project) != 0:
-    # url = 
-# else:
-#     url = 'no'
+from nagato.kitsu import NagatoProfile
 
 ########## operators ################################
 client = pysvn.Client()
-# def remote():
-#         if kitsu.remote_host[0] == True:
-#             return True
-#         else:
-#             return False
 
 class OBJECT_OT_NagatoAdd(Operator):
     bl_label = 'Add file to SVN'
@@ -59,20 +50,52 @@ class OBJECT_OT_NagatoPublish(Operator):
         default = 'file published',
         description = 'comment for publishing'
         )
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+    logged_in = True
+
+    def draw(self, context):
+        if self.logged_in:
+            layout = self.layout
+            layout.prop(self, "comment")
+        else:
+            layout = self.layout
+            layout.prop(self, "comment")
+            layout.prop(self, "username")
+            layout.prop(self, "password")
+
         
     def invoke(self, context, event):
+        try:
+            client.update(f'{bpy.context.blend_data.filepath}')
+        except pysvn._pysvn_3_7.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                self.logged_in = False
+                return context.window_manager.invoke_props_dialog(self)
         return context.window_manager.invoke_props_dialog(self)
-    
+
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
         bpy.ops.wm.save_mainfile()
-        user = kitsu.current_user[0]
+        user = kitsu.NagatoProfile.user['full_name']
         
         try:
+            client.set_default_username(self.username)
+            client.set_default_password(self.password)
+
             client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
             statuses = client.status(bpy.path.abspath('//') + 'maps')
             for status in statuses:
@@ -89,22 +112,49 @@ class OBJECT_OT_NagatoUpdate(Operator):
     bl_label = 'Update file'
     bl_idname = 'nagato.update'
     bl_description = 'Update current open file from project repository'
-    
-    @classmethod
-    def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
 
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
 
-    def execute(self, context):
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+        
+    def invoke(self, context, event):
         try:
             client.update(f'{bpy.context.blend_data.filepath}')
             client.update(bpy.path.abspath('//') + 'maps')
             bpy.ops.wm.revert_mainfile()
             self.report({'INFO'}, "Update Successful")
+            return{'FINISHED'}
         except pysvn._pysvn_3_7.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                return context.window_manager.invoke_props_dialog(self)
             self.report({'WARNING'}, str(e))
-        # except pysvn._pysvn_3_7.ClientError:
-        #     self.report({'WARNING'}, "None of the targets are working copies")
+            return{'FINISHED'}
+    
+    @classmethod
+    def poll(cls, context):
+        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
+
+
+    def execute(self, context):
+        try:
+            client.set_default_username(self.username)
+            client.set_default_password(self.password)
+
+            client.update(f'{bpy.context.blend_data.filepath}')
+            client.update(bpy.path.abspath('//') + 'maps')
+            bpy.ops.wm.revert_mainfile()
+            self.report({'INFO'}, "Update Successful")
+        except pysvn._pysvn_3_7.ClientError as err:
+            self.report({'WARNING'}, str(err))
         return{'FINISHED'}
 
 
@@ -112,25 +162,59 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
     bl_label = 'Update project files'
     bl_idname = 'nagato.update_all'
     bl_description = 'Update all files in project repository'
+
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+
+    def invoke(self, context, event):
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        try:
+            for file in os.listdir(project_folder):
+                try:
+                    client.update(os.path.join(project_folder, file))
+                except pysvn._pysvn_3_7.ClientError as error:
+                    if str(error) == 'callback_get_login required':
+                        return context.window_manager.invoke_props_dialog(self)
+                    self.report({'WARNING'}, str(error))
+            if bpy.data.is_saved:
+                        bpy.ops.wm.revert_mainfile()
+            self.report({'INFO'}, "Update Successful")
+        except FileNotFoundError:
+            self.report({'WARNING'}, 'project files do not exist')
+        return{'FINISHED'}
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
+        return bool(kitsu.NagatoProfile.user) and bool(kitsu.NagatoProfile.active_project)
 
     def execute(self, context):
-        user = os.environ.get('homepath')
-        user_f = user.replace("\\","/")
-        mount_point = 'C:' + user_f + '/projects/'
-        project = mount_point + kitsu.current_project[0]
+        client.set_default_username(self.username)
+        client.set_default_password(self.password)
+
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
         try:
-            for file in os.listdir(project):
+            for file in os.listdir(project_folder):
                 try:
-                    client.update(os.path.join(project, file))
+                    client.update(os.path.join(project_folder, file))
                     if bpy.data.is_saved:
                         bpy.ops.wm.revert_mainfile()
                     self.report({'INFO'}, "Update Successful")
                 except pysvn._pysvn_3_7.ClientError as error:
-                    self.report({'INFO'}, str(error))
+                    self.report({'WARNING'}, str(error))
         except FileNotFoundError:
             self.report({'WARNING'}, 'project files do not exist')
         return{'FINISHED'}
@@ -229,29 +313,25 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0
+        return bool(kitsu.NagatoProfile.user) and kitsu.NagatoProfile.active_project != None
 
     def execute(self, context):
-        # if len(kitsu.current_project) != 0:
-        project_info = gazu.project.get_project_by_name(kitsu.current_project[0])
+        project_info = NagatoProfile.active_project
         try:
             if self.remote_bool is False:
                 repo_url = project_info['data']['local_svn_url']
             else:
                 repo_url = project_info['data']['remote_svn_url']
-            user = os.environ.get('homepath')
-            user_f = user.replace("\\","/")
-            root = context.preferences.addons['nagato'].preferences.root
-            mount_point = os.path.join('C:', user_f, root)
-            file_path = os.path.join(mount_point, kitsu.current_project[0])  
+            root = project_info['file_tree']['working']['root']
+            mount_point = project_info['file_tree']['working']['mountpoint']
+            file_path = os.path.expanduser(os.path.join(mount_point, root, kitsu.NagatoProfile.active_project['name']))
             client.set_default_username(self.username)
             client.set_default_password(self.password)
-            if os.path.isdir(mount_point) == False:
-                os.mkdir(mount_point)
             if os.path.isdir(file_path) == False:
-                os.mkdir(file_path)
+                print(file_path)
+                os.makedirs(file_path)
                 try:
-                    if client.is_url(repo_url) in [1, True]:
+                    if client.is_url(repo_url):
                         client.checkout(repo_url, file_path)
                         self.report({'INFO'}, "project files downloaded")
                     else:
@@ -260,7 +340,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                     self.report({'WARNING'}, str(e))
             elif len(os.listdir(file_path)) == 0:
                 try:
-                    if client.is_url(repo_url) in [1, True]:
+                    if client.is_url(repo_url):
                         client.checkout(repo_url, file_path)
                         self.report({'INFO'}, "project files downloaded")
                     else:
@@ -389,13 +469,13 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
 
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and len(kitsu.current_project) != 0 and kitsu.current_user[1] == 'admin'
+        return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        project = gazu.project.get_project_by_name(kitsu.current_project[0])
+        project = gazu.project.get_project_by_name(kitsu.NagatoProfile.active_project['name'])
         project_id = project['id']
         gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
         gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})
