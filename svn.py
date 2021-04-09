@@ -270,10 +270,11 @@ class OBJECT_OT_NagatoCleanUp(Operator):
 
 
     def execute(self, context):
-        mount_point = context.preferences.addons['nagato'].preferences.project_mount_point
+        mount_point = os.path.expanduser(context.preferences.addons['nagato'].preferences.mountpoint)
         file_root = bpy.context.blend_data.filepath.rsplit('/', 1)
         path = file_root[0].split(mount_point, 1)[1].split('/', 3)
         root = os.path.join(mount_point, path[1], path[2])
+        print(root)
         try:
             client.cleanup(root)
             self.report({'INFO'}, "clean up succesful")
