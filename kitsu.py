@@ -192,9 +192,13 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.refresh_token = token['refresh_token']
                 NagatoProfile.ldap = token['ldap']
                 NagatoProfile.save_json()
-                svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
-                if os.path.isdir(svn_auth_cache):
-                    shutil.rmtree(svn_auth_cache)
+                svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
+                if os.path.isdir(svn_auth_folder):
+                    filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
+                    for auth_file in filelist:
+                        file_path = os.path.join(svn_auth_folder, auth_file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
             else:
                 host = context.preferences.addons['nagato'].preferences.remote_host_url
                 bpy.ops.nagato.set_remote_host()
@@ -206,9 +210,13 @@ class NAGATO_OT_Login(Operator):
                 NagatoProfile.refresh_token = token['refresh_token']
                 NagatoProfile.ldap = token['ldap']
                 NagatoProfile.save_json()
-                svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
-                if os.path.isdir(svn_auth_cache):
-                    shutil.rmtree(svn_auth_cache)
+                svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
+                if os.path.isdir(svn_auth_folder):
+                    filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
+                    for auth_file in filelist:
+                        file_path = os.path.join(svn_auth_folder, auth_file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
 
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
@@ -241,16 +249,19 @@ class NAGATO_OT_Logout(Operator):
         try:
             gazu.log_out()
             NagatoProfile.reset()
-            svn_auth_cache = f'{os.getenv("APPDATA")}/Subversion/auth'
-            if os.path.isdir(svn_auth_cache):
-                shutil.rmtree(svn_auth_cache)
+            svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
+            if os.path.isdir(svn_auth_folder):
+                filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
+                for auth_file in filelist:
+                    file_path = os.path.join(svn_auth_folder, auth_file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
             bpy.ops.nagato.refresh()
             self.report({'INFO'}, 'logged out')
             return{'FINISHED'}
         except NotAuthenticatedException:
             return{'FINISHED'}
             
-
 
 class NAGATO_OT_Refresh(Operator):
     bl_label = 'Nagato Refresh'
