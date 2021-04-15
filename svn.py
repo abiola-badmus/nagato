@@ -325,7 +325,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                 repo_url = project_info['data']['remote_svn_url']
             root = project_info['file_tree']['working']['root']
             mount_point = project_info['file_tree']['working']['mountpoint']
-            file_path = os.path.expanduser(os.path.join(mount_point, root, kitsu.NagatoProfile.active_project['name']))
+            file_path = os.path.expanduser(os.path.join(mount_point, root, kitsu.NagatoProfile.active_project['name'].replace(' ', '_').lower()))
             client.set_default_username(self.username)
             client.set_default_password(self.password)
             if os.path.isdir(file_path) == False:
