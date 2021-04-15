@@ -179,7 +179,7 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
     def invoke(self, context, event):
         mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
         root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
         try:
             for file in os.listdir(project_folder):
                 try:

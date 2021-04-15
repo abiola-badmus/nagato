@@ -101,7 +101,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         else:
             mount_point = 'None'
             root = 'None'
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, project_label))
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, project_label.replace(' ', '_').lower()))
         if os.path.isdir(project_folder):
             row.operator('nagato.update_all', text= 'update all files', icon = 'IMPORT')
         else:

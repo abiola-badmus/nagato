@@ -268,6 +268,10 @@ class NAGATO_OT_Refresh(Operator):
     bl_idname = 'nagato.refresh'
     bl_description = 'refresh kitsu data'    
 
+    @classmethod
+    def poll(cls, context):
+        return NagatoProfile.user != None 
+
     def execute(self, context):
         scene = context.scene
         displayed_tasks.clear()
@@ -276,7 +280,7 @@ class NAGATO_OT_Refresh(Operator):
             NagatoProfile.refresh_tasks()
             self.report({'INFO'}, 'Refreshed')
         except NotAuthenticatedException:
-            self.report({'INFO'}, 'Not Logged in')
+            self.report({'INFO'}, 'Not Logged in') 
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
@@ -357,7 +361,7 @@ class NAGATO_OT_OpenFile(Operator):
             [NagatoProfile.active_task_type][task_list_index]['task_type_name']
         mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
         root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
         file_map_dir = os.path.join(project_folder, '.conf/file_map')
         print(NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]["entity_name"])
 
