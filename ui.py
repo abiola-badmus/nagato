@@ -135,7 +135,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
         
-        # layout.operator('nagato.open', icon= 'FILEBROWSER', text= 'open file') 
+        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'get dependencies') 
         
         ########## task description ####################
         try:

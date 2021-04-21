@@ -22,9 +22,9 @@ current_status = []
 
 
 ########################### FUNCTIONS ################################ 
-@persistent
-def load_handler(dummy):
-    print("Load Handler: --------------", bpy.data.filepath)
+# @persistent
+# def load_handler(dummy):
+#     print("Load Handler: --------------", bpy.data.filepath)
 
 def update_list(scene):
     bpy.app.handlers.depsgraph_update_pre.remove(update_list)
@@ -607,6 +607,28 @@ class OBJECT_OT_NagatoSetFileTree(Operator):
         return{'FINISHED'}
 
 
+class NAGATO_OT_GetDependencies(Operator):
+    bl_label = 'set file tree?'
+    bl_idname = 'nagato.get_dependencies'
+    bl_description = 'set file tree'
+
+    # @classmethod
+    # def poll(cls, context):
+    #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
+
+    def execute(self, context):
+        # bpy.data.collections.remove(bpy.data.collections['Collection'])
+        name = bpy.path.basename(bpy.context.blend_data.filepath).rsplit('.',1)[0]
+        collection = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(collection)
+        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[0]
+        scene_name = name.split('_')
+        print(scene_name)
+        print(NagatoProfile.tasks)
+        # bpy.data.scenes['Scene'].name = scene_name[0] + '_' + scene_name[1]
+        self.report({'INFO'}, 'dependency updated')
+        return{'FINISHED'}
+
 ######################################### Menu ################################################################################
 class NAGATO_MT_StatusList(Menu):
     bl_label = 'select_status'
@@ -655,6 +677,7 @@ classes = [
         NAGATO_MT_Projects,
         NAGATO_OT_SetStatus,
         NAGATO_MT_StatusList,
+        NAGATO_OT_GetDependencies,
         NAGATO_OT_UpdateStatus,
         NAGATO_OT_GetRefImg,
         OBJECT_OT_NagatoSetFileTree
