@@ -51,7 +51,9 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Tool"
-    
+
+    def draw_header(self, context):
+        self.layout.operator('nagato.setting', icon = 'TOOL_SETTINGS', text="")
     
     def draw(self, context):
         layout = self.layout

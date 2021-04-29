@@ -82,6 +82,14 @@ def task_file_directory(blend_file_path, file_map_parser, task_type):
         return None
         # directory = f'{blend_file_path}_{task_type}.blend'
         # file_map_parser.set('file_map', task_type, task_type)
+
+def initialize_file(file_data):
+        # bpy.data.collections.remove(bpy.data.collections['Collection'])
+        file_name = bpy.path.basename(bpy.context.blend_data.filepath).rsplit('.',1)[0]
+        scene = bpy.data.scenes.get('main')
+        scene['task_file_data'] = file_data
+        # bpy.data.scenes['Scene'].name = scene_name[0] + '_' + scene_name[1]
+        bpy.ops.wm.save_mainfile()
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
     tasks_idx: IntProperty()
@@ -356,6 +364,8 @@ class NAGATO_OT_OpenFile(Operator):
         task_list_index = bpy.context.scene.tasks_idx
         active_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
             [NagatoProfile.active_task_type][task_list_index]['id']
+        entity_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]["entity_id"]
         file_path = os.path.expanduser(gazu.files.build_working_file_path(active_id))
         task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
             [NagatoProfile.active_task_type][task_list_index]['task_type_name']
@@ -375,13 +385,18 @@ class NAGATO_OT_OpenFile(Operator):
         directory = task_file_directory(blend_file_path=file_path,
                                         file_map_parser=file_map_parser,
                                         task_type=task_type)
+        task_file_data = {'task_type':task_type, 'task_id':active_id, 'entity_id':entity_id}
+        print(gazu.entity.get_entity(entity_id))
+        print('........................................\n...................................................\n.............................................')
+        print(NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index])
         if directory:
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
                 print(directory)
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
-                print('3.1')
+                initialize_file(file_data=task_file_data)
             except RuntimeError as err:
                 self.report({'WARNING'}, f'{err}')
         else:
@@ -617,16 +632,38 @@ class NAGATO_OT_GetDependencies(Operator):
     #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
 
     def execute(self, context):
-        # bpy.data.collections.remove(bpy.data.collections['Collection'])
-        name = bpy.path.basename(bpy.context.blend_data.filepath).rsplit('.',1)[0]
-        collection = bpy.data.collections.new(name)
-        bpy.context.scene.collection.children.link(collection)
-        bpy.context.view_layer.active_layer_collection = bpy.context.view_layer.layer_collection.children[0]
-        scene_name = name.split('_')
-        print(scene_name)
-        print(NagatoProfile.tasks)
-        # bpy.data.scenes['Scene'].name = scene_name[0] + '_' + scene_name[1]
+        scene = bpy.data.scenes.get('main')
+        entity = gazu.entity.get_entity(scene['task_file_data']['entity_id'])
+        entity_type = entity['type']
+        file_dependencies = entity['entities_out']
+        print(file_dependencies)
+        
+
+        for file_dependency in file_dependencies:
+            asset = gazu.asset.get_asset(file_dependency)
+            path = f"{os.path.expanduser(gazu.files.build_working_file_path(asset['tasks'][0]['id']))}.blend"
+            if not bpy.data.objects.get(asset['name']):
+                file_name = 'main'
+                directory = f'{path}/Collection'
+                print(directory)
+                bpy.ops.wm.link(
+                    filename=file_name,
+                    directory=directory)
+                bpy.context.selected_objects[0].name = asset['name']
         self.report({'INFO'}, 'dependency updated')
+        return{'FINISHED'}
+
+class NAGATO_OT_Setting(Operator):
+    bl_label = 'setting'
+    bl_idname = 'nagato.setting'
+    bl_description = 'go to nagato setting'
+
+    # @classmethod
+    # def poll(cls, context):
+    #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
+
+    def execute(self, context):
+        bpy.ops.preferences.addon_show(module = 'nagato')
         return{'FINISHED'}
 
 ######################################### Menu ################################################################################
@@ -680,7 +717,8 @@ classes = [
         NAGATO_OT_GetDependencies,
         NAGATO_OT_UpdateStatus,
         NAGATO_OT_GetRefImg,
-        OBJECT_OT_NagatoSetFileTree
+        OBJECT_OT_NagatoSetFileTree,
+        NAGATO_OT_Setting,
         ]  
     
     

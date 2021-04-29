@@ -338,6 +338,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                     else:
                         self.report({'INFO'}, "SVN url invalid")
                 except pysvn._pysvn_3_7.ClientError as e:
+                    os.removedirs(file_path)
                     self.report({'WARNING'}, str(e))
             elif len(os.listdir(file_path)) == 0:
                 try:
@@ -345,6 +346,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                         client.checkout(repo_url, file_path)
                         self.report({'INFO'}, "project files downloaded")
                     else:
+                        os.removedirs(file_path)
                         self.report({'WARNING'}, "SVN url invalid")
                 except pysvn._pysvn_3_7.ClientError as e:
                     self.report({'WARNING'}, str(e))
