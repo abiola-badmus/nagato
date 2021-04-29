@@ -632,24 +632,30 @@ class NAGATO_OT_GetDependencies(Operator):
     #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
 
     def execute(self, context):
+        main_file_path = bpy.context.blend_data.filepath
         scene = bpy.data.scenes.get('main')
         entity = gazu.entity.get_entity(scene['task_file_data']['entity_id'])
         entity_type = entity['type']
         file_dependencies = entity['entities_out']
-        print(file_dependencies)
         
 
         for file_dependency in file_dependencies:
             asset = gazu.asset.get_asset(file_dependency)
-            path = f"{os.path.expanduser(gazu.files.build_working_file_path(asset['tasks'][0]['id']))}.blend"
-            if not bpy.data.objects.get(asset['name']):
-                file_name = 'main'
-                directory = f'{path}/Collection'
-                print(directory)
-                bpy.ops.wm.link(
-                    filename=file_name,
-                    directory=directory)
-                bpy.context.selected_objects[0].name = asset['name']
+            asset_name = asset['name']
+            path = f"{gazu.files.build_working_file_path(asset['tasks'][0]['id'])}.blend"
+            expanded_path = os.path.expanduser(path)
+            if not bpy.data.objects.get(asset_name):
+                if not main_file_path == expanded_path:
+                    file_name = 'main'
+                    directory = f'{expanded_path}/Collection'
+                    bpy.ops.wm.link(
+                        filename=file_name,
+                        directory=directory)
+                    bpy.context.selected_objects[0].name = asset_name
+                    if 'file_dependecies' not in scene.keys():
+                        scene['file_dependecies'] = dict()
+                    scene['file_dependecies'][asset_name] = path
+                    print(scene['file_dependecies'][asset_name])    
         self.report({'INFO'}, 'dependency updated')
         return{'FINISHED'}
 
