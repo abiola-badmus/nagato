@@ -373,7 +373,6 @@ class NAGATO_OT_OpenFile(Operator):
         root = NagatoProfile.active_project['file_tree']['working']['root']
         project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
         file_map_dir = os.path.join(project_folder, '.conf/file_map')
-        print(NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]["entity_name"])
 
         if not os.path.isdir(project_folder):
             self.report({'WARNING'}, 'Project not downloaded, download project file')
@@ -386,15 +385,10 @@ class NAGATO_OT_OpenFile(Operator):
                                         file_map_parser=file_map_parser,
                                         task_type=task_type)
         task_file_data = {'task_type':task_type, 'task_id':active_id, 'entity_id':entity_id}
-        print(gazu.entity.get_entity(entity_id))
-        print('........................................\n...................................................\n.............................................')
-        print(NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index])
         if directory:
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
-                print(directory)
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
                 initialize_file(file_data=task_file_data)
             except RuntimeError as err:
@@ -637,8 +631,6 @@ class NAGATO_OT_GetDependencies(Operator):
         entity = gazu.entity.get_entity(scene['task_file_data']['entity_id'])
         entity_type = entity['type']
         file_dependencies = entity['entities_out']
-        
-
         for file_dependency in file_dependencies:
             asset = gazu.asset.get_asset(file_dependency)
             asset_name = asset['name']
@@ -654,8 +646,7 @@ class NAGATO_OT_GetDependencies(Operator):
                     bpy.context.selected_objects[0].name = asset_name
                     if 'file_dependecies' not in scene.keys():
                         scene['file_dependecies'] = dict()
-                    scene['file_dependecies'][asset_name] = path
-                    print(scene['file_dependecies'][asset_name])    
+                    scene['file_dependecies'][asset_name] = path    
         self.report({'INFO'}, 'dependency updated')
         return{'FINISHED'}
 
