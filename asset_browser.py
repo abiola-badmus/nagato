@@ -4,9 +4,7 @@ from gazu.exception import NotAuthenticatedException
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
 from nagato.kitsu import NagatoProfile
-assets_data = {
-   'chars': [] , 'envs': [], 'props': []
-}
+assets_lib = dict()
 displayed_assets = []
 active_asset_type = []
 
@@ -16,7 +14,7 @@ def update_asset_list(scene):
     except:
         pass
 
-    for asset in displayed_assets:   
+    for asset in displayed_assets:  
         colection = scene.assets.add()   
         colection.asset = asset
 
@@ -32,12 +30,14 @@ class ASSETS_UL_list(bpy.types.UIList):
             # split = layout.split(factor= 0.6, align=True) 
             if len(active_asset_type) == 0:
                 layout.label(text = item.asset, icon='BLENDER')
-            elif active_asset_type[0] == 'props':
+            elif active_asset_type[0].lower() in {'props'}:
                 layout.label(text = item.asset, icon='MATCUBE')
-            elif active_asset_type[0] == 'chars':
+            elif active_asset_type[0].lower() in {'chars', 'characters'}:
                 layout.label(text = item.asset, icon='MONKEY')
-            elif active_asset_type[0] == 'envs':
+            elif active_asset_type[0].lower() in {'envs', 'environment'}:
                 layout.label(text = item.asset, icon='WORLD_DATA')
+            else:
+                layout.label(text = item.asset, icon='BLENDER')
 
             if item.multi_select:
                 layout.prop(item, 'multi_select', text='', icon = 'CHECKBOX_HLT', emboss=False, translate=False)
@@ -56,26 +56,19 @@ class NAGATO_OT_AssetRefresh(Operator):
 
     def execute(self, context):
         scene = context.scene
-        assets_data['chars'].clear()
-        assets_data['envs'].clear()
-        assets_data['props'].clear()
+        assets_lib.clear()
         try:
             mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
             root = NagatoProfile.active_project['file_tree']['working']['root']
-            project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
-            project_path = os.path.join(project_folder, 'lib')
-            print(project_path)
-            for path in os.listdir(project_path):
-                for asset in os.listdir(os.path.join(project_path, path)):
-                    if path == 'chars':
+            project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_')))
+            project_lib_folder = os.path.join(project_folder, 'lib')
+
+            for asset_type in os.listdir(project_lib_folder):
+                if os.path.isdir(os.path.join(project_lib_folder,asset_type)):
+                    assets_lib[asset_type] = list()
+                    for asset in os.listdir(os.path.join(project_lib_folder,asset_type)):
                         if asset.rsplit('.', 1)[-1] == 'blend':
-                            assets_data['chars'].append(asset.rsplit('.', 1)[0])
-                    if path == 'envs':
-                        if asset.rsplit('.', 1)[-1] == 'blend':
-                            assets_data['envs'].append(asset.rsplit('.', 1)[0])
-                    if path == 'props':
-                        if asset.rsplit('.', 1)[-1] == 'blend':
-                            assets_data['props'].append(asset.rsplit('.', 1)[0])
+                            assets_lib[asset_type].append(asset.rsplit('.', 1)[0])
             self.report({'INFO'}, 'Refreshed')
         except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in')
@@ -96,14 +89,15 @@ class NAGATO_OT_Assets(Operator):
     def execute(self, context):
         scene = context.scene
         displayed_assets.clear()
-        for asset_type in assets_data:
+        for asset_type in assets_lib:
             if asset_type == self.asset_type:
-                for asset in assets_data[asset_type]:
+                for asset in assets_lib[asset_type]:
                     displayed_assets.append(asset)
         update_asset_list(scene)
         active_asset_type.clear()
         active_asset_type.append(self.asset_type)
         bpy.context.scene.update_tag()
+        bpy.app.handlers.depsgraph_update_pre.append(update_asset_list)
         self.report({'INFO'}, 'Asset_type: ' + self.asset_type)
         return{'FINISHED'}
 
@@ -218,7 +212,12 @@ class NAGATO_MT_AssetType(Menu):
     bl_idname = "nagato.select_asset_type"
 
     def draw(self, context):
-        asset_types = ['chars', 'envs', 'props']
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_')))
+        project_lib_folder = os.path.join(project_folder, 'lib')
+        asset_types = os.listdir(project_lib_folder)
+        # asset_types = ['chars', 'envs', 'props']
         for i in asset_types:
             layout = self.layout
             layout.operator('nagato.assets', text= i).asset_type = i
