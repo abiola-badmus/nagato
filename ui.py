@@ -57,6 +57,14 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
+
+        if context.preferences.addons['nagato'].preferences.error_message:
+            sub = layout.row()
+            sub.alert = True  # labels don't display in red :(
+            sub.label(text=context.preferences.addons['nagato'].preferences.error_message, icon='ERROR')
+        if context.preferences.addons['nagato'].preferences.ok_message:
+            sub = layout.row()
+            sub.label(text=context.preferences.addons['nagato'].preferences.ok_message, icon='FILE_TICK')
         
         task_list_index = bpy.context.scene.tasks_idx
         col = context.scene.tasks
@@ -84,6 +92,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll = row.column()
         coll.operator('nagato.logout', icon = 'USER')   
         coll = row.column()
+        coll.enabled = bool(nagato.kitsu.NagatoProfile.user)
         coll.operator('nagato.refresh', icon = 'FILE_REFRESH', text= '')
         
         ####### projects menu  #####################
@@ -203,6 +212,17 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         default='',
     )
 
+    error_message: StringProperty(
+        name='Error Message',
+        default='',
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+    ok_message: StringProperty(
+        name='Message',
+        default='',
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     # project_mount_point: StringProperty(
     #     name="Project mounting point",
     #     default='C:' + user,
@@ -253,11 +273,22 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     )
     
 
-
+    def reset_messages(self):
+        self.ok_message = ''
+        self.error_message = ''
 
 
     def draw(self, context):
         layout = self.layout
+
+        if self.error_message:
+            sub = layout.row()
+            sub.alert = True  # labels don't display in red :(
+            sub.label(text=self.error_message, icon='ERROR')
+        if self.ok_message:
+            sub = layout.row()
+            sub.label(text=self.ok_message, icon='FILE_TICK')
+
         box = layout.box()
         # layout.label(text="Nagato Preferences")
         box.prop(self, "local_host_url")
@@ -311,6 +342,8 @@ def register():
     # bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
     bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.register_class(NagatoGenesis)
+
+    bpy.context.preferences.addons['nagato'].preferences.reset_messages()
 
 def unregister():
     bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)

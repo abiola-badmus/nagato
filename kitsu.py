@@ -230,16 +230,23 @@ class NAGATO_OT_Login(Operator):
             bpy.ops.nagato.refresh()
             bpy.context.scene.update_tag()
             # update_list(scene)
+            context.preferences.addons['nagato'].preferences.ok_message = 'Logged in'
+            context.preferences.addons['nagato'].preferences.error_message = ''
             self.report({'INFO'}, f"logged in as {NagatoProfile.user['full_name']}")
         except (NotAuthenticatedException, ServerErrorException, ParameterException):
+            context.preferences.addons['nagato'].preferences.error_message = 'Username and/or password is incorrect'
             self.report({'WARNING'}, 'wrong credecials')
         except (MissingSchema, InvalidSchema, ConnectionError) as err:
+            context.preferences.addons['nagato'].preferences.error_message = str(err)
             self.report({'WARNING'}, str(err))
         except OSError:
+            context.preferences.addons['nagato'].preferences.error_message = 'Cant connect to server. check connection or Host url'
             self.report({'WARNING'}, 'Cant connect to server. check connection or Host url')
         except (MethodNotAllowedException, RouteNotFoundException):
+            context.preferences.addons['nagato'].preferences.error_message = 'invalid host url'
             self.report({'WARNING'}, 'invalid host url')
         except Exception as err:
+            context.preferences.addons['nagato'].preferences.error_message = f'something went wrong. {err}'
             self.report({'WARNING'}, f'something went wrong. {err}')
         return{'FINISHED'}
 
@@ -276,9 +283,9 @@ class NAGATO_OT_Refresh(Operator):
     bl_idname = 'nagato.refresh'
     bl_description = 'refresh kitsu data'    
 
-    @classmethod
-    def poll(cls, context):
-        return NagatoProfile.user != None 
+    # @classmethod
+    # def poll(cls, context):
+    #     return NagatoProfile.user != None 
 
     def execute(self, context):
         scene = context.scene
@@ -289,6 +296,7 @@ class NAGATO_OT_Refresh(Operator):
             self.report({'INFO'}, 'Refreshed')
         except NotAuthenticatedException:
             self.report({'INFO'}, 'Not Logged in') 
+        context.preferences.addons['nagato'].preferences.reset_messages()
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
