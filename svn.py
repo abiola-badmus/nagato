@@ -488,7 +488,7 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
 ##########################MENU############################
 class NAGATO_MT_ProjectFiles(Menu):
     bl_label = 'project files operators'
-    bl_idname = "nagato.project_files"
+    bl_idname = "NAGATO_MT_ProjectFiles"
     
     def draw(self, context):
         layout = self.layout

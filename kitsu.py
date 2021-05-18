@@ -399,7 +399,39 @@ class NAGATO_OT_OpenFile(Operator):
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
- 
+
+
+class NAGATO_OT_project_open_in_browser(Operator):
+    bl_idname = "nagato.project_open_in_browser"
+    bl_label = "Open Project in Browser"
+    bl_description = "Opens a webbrowser to show the project in Kitsu"
+
+    project_id: bpy.props.StringProperty(name="Project ID", default="")
+
+    def execute(self, context):
+        import webbrowser
+        url = "http://localhost/api"
+        webbrowser.open_new_tab(url)
+        self.report({"INFO"}, f"Opened a browser at {url}")
+
+        return {"FINISHED"}
+
+
+class NAGATO_OT_Submit_shot_to_kitsu(Operator):
+    bl_idname = "nagato.submit_shots_to_kitsu"
+    bl_label = "Submit all shots to kitsu"
+    bl_description = "Submit all shots to kitsu"
+
+    project_id: bpy.props.StringProperty(name="Project ID", default="")
+
+    def execute(self, context):
+        import webbrowser
+        url = "http://localhost/api"
+        webbrowser.open_new_tab(url)
+        self.report({"INFO"}, f"Opened a browser at {url}")
+
+        return {"FINISHED"}
+
 
 class NAGATO_OT_SetStatus(Operator):
     bl_label = 'status'
@@ -707,6 +739,7 @@ classes = [
         NAGATO_MT_FilterTask,
         NAGATO_OT_Filter,
         NAGATO_OT_OpenFile,
+        NAGATO_OT_project_open_in_browser,
         NAGATO_OT_Projects,
         NAGATO_MT_Projects,
         NAGATO_OT_SetStatus,
