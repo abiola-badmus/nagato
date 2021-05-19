@@ -425,10 +425,10 @@ class NAGATO_OT_Submit_shot_to_kitsu(Operator):
     project_id: bpy.props.StringProperty(name="Project ID", default="")
 
     def execute(self, context):
-        import webbrowser
-        url = "http://localhost/api"
-        webbrowser.open_new_tab(url)
-        self.report({"INFO"}, f"Opened a browser at {url}")
+        selected_scrips = bpy.context.selected_sequences
+        for i in selected_scrips:
+            print(i.name)
+
 
         return {"FINISHED"}
 
@@ -739,6 +739,7 @@ classes = [
         NAGATO_MT_FilterTask,
         NAGATO_OT_Filter,
         NAGATO_OT_OpenFile,
+        NAGATO_OT_Submit_shot_to_kitsu,
         NAGATO_OT_project_open_in_browser,
         NAGATO_OT_Projects,
         NAGATO_MT_Projects,

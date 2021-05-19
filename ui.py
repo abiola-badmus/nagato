@@ -227,7 +227,7 @@ class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
             'CROSS', 'GAMMA_CROSS', 'MULTIPLY', 'OVER_DROP',
             'WIPE', 'GLOW', 'TRANSFORM', 'COLOR', 'SPEED',
             'MULTICAM', 'GAUSSIAN_BLUR', 'TEXT', 'COLORMIX'
-        }
+        } and bool(nagato.kitsu.NagatoProfile.user) and bool(nagato.kitsu.NagatoProfile.active_project)
     
     def draw(self, context):
         layout = self.layout
@@ -235,7 +235,7 @@ class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
         row = layout.row()
         # row.alert = True
         col = row.column()
-        col.operator('nagato.project_open_in_browser', text= 'Submit All  Shots to Kitsu')
+        col.operator('nagato.submit_shots_to_kitsu', text= 'Submit All  Shots to Kitsu')
         col.operator('nagato.project_open_in_browser', icon= 'WORLD', text= 'Open Project in Browser')
                
 
