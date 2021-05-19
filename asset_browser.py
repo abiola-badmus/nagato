@@ -112,19 +112,15 @@ class NAGATO_OT_LinkAsset(Operator):
         file_name = displayed_assets[asset_list_index]
         mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
         root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name']))
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_')))
         asset_path = os.path.join(project_folder, 'lib', active_asset_type[0])
         blend_file = os.path.join(asset_path, f'{file_name}.blend')
-        section = "\\Collection\\"
-        file_path = blend_file + section + file_name
-        directory = blend_file + section
+        # file_path = blend_file + section + file_name
+        directory = f"{blend_file}/Collection"
 
         bpy.ops.wm.link(
-            filepath=file_path,
-            filename=file_name,
+            filename="main",
             directory=directory)
-
-
         self.report({'INFO'}, 'Asset Linked')
         return{'FINISHED'}
 

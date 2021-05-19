@@ -22,9 +22,11 @@ current_status = []
 
 
 ########################### FUNCTIONS ################################ 
-# @persistent
-# def load_handler(dummy):
-#     print("Load Handler: --------------", bpy.data.filepath)
+@persistent
+def create_main_collection(dummy):
+    if 'main' not in bpy.data.collections.keys():
+        collection = bpy.data.collections.new('main')
+        bpy.context.scene.collection.children.link(collection)
 
 def update_list(scene):
     bpy.app.handlers.depsgraph_update_pre.remove(update_list)
@@ -755,7 +757,7 @@ def register():
     bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
 
     bpy.app.handlers.depsgraph_update_pre.append(update_list)
-    # bpy.app.handlers.load_post.append(load_handler)
+    bpy.app.handlers.load_post.append(create_main_collection)
     # bpy.app.handlers.load_factory_preferences_post.append(load_handler)
 
 def unregister():
