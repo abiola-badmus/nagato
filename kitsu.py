@@ -1,3 +1,5 @@
+from gazu import project, shot
+from typing import Sequence
 import bpy
 import os
 import time
@@ -11,6 +13,7 @@ from bpy.props import (StringProperty, IntProperty, BoolProperty)
 from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 import shutil
+import re
 
 NagatoProfile = profile.NagatoProfile
 # time_queue = [0, 3]
@@ -425,9 +428,40 @@ class NAGATO_OT_Submit_shot_to_kitsu(Operator):
     project_id: bpy.props.StringProperty(name="Project ID", default="")
 
     def execute(self, context):
+        project = NagatoProfile.active_project
         selected_scrips = bpy.context.selected_sequences
         for i in selected_scrips:
-            print(i.name)
+            name = i.name
+            sequence_pattern = re.compile(r'\bsq_[^\s]+')
+            Sequence_match = sequence_pattern.search(name)
+            shot_pattern = re.compile(r'\bsh_[^\s]+')
+            shot_match = shot_pattern.search(name)
+
+            if Sequence_match:
+                sequence_name = Sequence_match.group(0)
+            else:
+                sequence_name = None
+            if shot_match:
+                shot_name = shot_match.group(0)
+            else:
+                shot_name = None
+            if sequence_name and shot_name:
+                sequence = gazu.shot.get_sequence_by_name(project['id'], sequence_name)
+                if sequence:
+                    shot = gazu.shot.get_shot_by_name(sequence, shot_name)
+                    if not shot:
+                        gazu.shot.new_shot(
+                            project=project['id'],
+                            sequence=sequence,
+                            name=shot_name)
+                else:
+                    sequence = gazu.shot.new_sequence(project['id'], sequence_name)
+                    gazu.shot.new_shot(
+                        project=project['id'],
+                        sequence=sequence,
+                        name=shot_name)
+
+
 
 
         return {"FINISHED"}
