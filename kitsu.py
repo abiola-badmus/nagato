@@ -1,3 +1,5 @@
+from gazu import project, shot
+from typing import Sequence
 import bpy
 import os
 import time
@@ -11,6 +13,7 @@ from bpy.props import (StringProperty, IntProperty, BoolProperty)
 from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 import shutil
+import re
 
 NagatoProfile = profile.NagatoProfile
 # time_queue = [0, 3]
@@ -409,7 +412,75 @@ class NAGATO_OT_OpenFile(Operator):
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         return{'FINISHED'}
- 
+
+
+class NAGATO_OT_project_open_in_browser(Operator):
+    bl_idname = "nagato.project_open_in_browser"
+    bl_label = "Open Project in Browser"
+    bl_description = "Opens a webbrowser to show the project in Kitsu"
+
+    project_id: bpy.props.StringProperty(name="Project ID", default="")
+
+    @classmethod
+    def poll(cls, context):
+        return bool(NagatoProfile.user) and NagatoProfile.active_project != None
+
+    def execute(self, context):
+        import webbrowser
+        url = gazu.project.get_project_url(NagatoProfile.active_project['id'])
+        print(NagatoProfile.active_project)
+        webbrowser.open_new_tab(url)
+        self.report({"INFO"}, f"Opened a browser at {url}")
+
+        return {"FINISHED"}
+
+
+class NAGATO_OT_Submit_shot_to_kitsu(Operator):
+    bl_idname = "nagato.submit_shots_to_kitsu"
+    bl_label = "Submit all shots to kitsu"
+    bl_description = "Submit all shots to kitsu"
+
+    project_id: bpy.props.StringProperty(name="Project ID", default="")
+
+    def execute(self, context):
+        project = NagatoProfile.active_project
+        selected_scrips = bpy.context.selected_sequences
+        for i in selected_scrips:
+            name = i.name
+            sequence_pattern = re.compile(r'\bsq_[^\s]+')
+            Sequence_match = sequence_pattern.search(name)
+            shot_pattern = re.compile(r'\bsh_[^\s]+')
+            shot_match = shot_pattern.search(name)
+
+            if Sequence_match:
+                sequence_name = Sequence_match.group(0)
+            else:
+                sequence_name = None
+            if shot_match:
+                shot_name = shot_match.group(0)
+            else:
+                shot_name = None
+            if sequence_name and shot_name:
+                sequence = gazu.shot.get_sequence_by_name(project['id'], sequence_name)
+                if sequence:
+                    shot = gazu.shot.get_shot_by_name(sequence, shot_name)
+                    if not shot:
+                        gazu.shot.new_shot(
+                            project=project['id'],
+                            sequence=sequence,
+                            name=shot_name)
+                else:
+                    sequence = gazu.shot.new_sequence(project['id'], sequence_name)
+                    gazu.shot.new_shot(
+                        project=project['id'],
+                        sequence=sequence,
+                        name=shot_name)
+
+
+
+
+        return {"FINISHED"}
+
 
 class NAGATO_OT_SetStatus(Operator):
     bl_label = 'status'
@@ -717,6 +788,8 @@ classes = [
         NAGATO_MT_FilterTask,
         NAGATO_OT_Filter,
         NAGATO_OT_OpenFile,
+        NAGATO_OT_Submit_shot_to_kitsu,
+        NAGATO_OT_project_open_in_browser,
         NAGATO_OT_Projects,
         NAGATO_MT_Projects,
         NAGATO_OT_SetStatus,

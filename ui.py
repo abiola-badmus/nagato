@@ -117,6 +117,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             row.operator('nagato.update_all', text= 'update all files', icon = 'IMPORT')
         else:
             row.operator('nagato.check_out', text= 'download project files', icon = 'IMPORT')
+        row.operator('nagato.project_open_in_browser', icon= 'WORLD', text= '')
         
         ############# filter menu #############################
         # rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
@@ -137,7 +138,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         col.enabled = text == "Task file"
         col.operator("nagato.update_status", icon='OUTLINER_DATA_GP_LAYER', text="")
         col.separator()
-        col.menu("nagato.project_files", icon="DOWNARROW_HLT", text="")
+        col.menu("NAGATO_MT_ProjectFiles", icon="DOWNARROW_HLT", text="")
         col.separator()
         col.operator('nagato.publish', icon_value = nagato_icon.icon('publish_file'), text='')
         col.operator('nagato.update', icon_value = nagato_icon.icon('update_file'), text='')
@@ -193,6 +194,59 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
         col.operator('nagato.append_asset', icon= 'APPEND_BLEND', text= '')
         col.separator()
         col.menu('nagato.asset_files', icon="DOWNARROW_HLT", text="")
+
+def act_strip(context):
+    try:
+        return context.scene.sequence_editor.active_strip
+    except AttributeError:
+        return None
+
+class SequencerButtonsPanel():
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_region_type = 'UI'
+
+    @staticmethod
+    def has_sequencer(context):
+        return (context.space_data.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'})
+
+    @classmethod
+    def poll(cls, context):
+        return cls.has_sequencer(context) and (act_strip(context) is not None)
+
+
+class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
+    """Creates a Panel in the Object properties window"""
+    bl_label = "Nagato"
+    bl_idname = "NAGATO_PT_SequencerPanel"
+    bl_category = "Strip"
+    bl_space_type = "SEQUENCE_EDITOR"
+    bl_region_type = 'UI'
+    bl_category = "Strip"
+    
+    @classmethod
+    def poll(cls, context):
+        if not cls.has_sequencer(context):
+            return False
+
+        strip = act_strip(context)
+        if not strip:
+            return False
+
+        return strip.type in {
+            'ADD', 'SUBTRACT', 'ALPHA_OVER', 'ALPHA_UNDER',
+            'CROSS', 'GAMMA_CROSS', 'MULTIPLY', 'OVER_DROP',
+            'WIPE', 'GLOW', 'TRANSFORM', 'COLOR', 'SPEED',
+            'MULTICAM', 'GAUSSIAN_BLUR', 'TEXT', 'COLORMIX'
+        } and bool(nagato.kitsu.NagatoProfile.user) and bool(nagato.kitsu.NagatoProfile.active_project)
+    
+    def draw(self, context):
+        layout = self.layout
+        ####### asset_types menu  #####################
+        row = layout.row()
+        # row.alert = True
+        col = row.column()
+        col.operator('nagato.submit_shots_to_kitsu', text= 'Submit Selected Shots to Kitsu')
+        col.operator('nagato.project_open_in_browser', icon= 'WORLD', text= 'Open Project in Browser')
                
 
 
@@ -341,6 +395,7 @@ def register():
     bpy.utils.register_class(NAGATO_PT_TaskManagementPanel)
     # bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
     bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
+    bpy.utils.register_class(NAGATO_PT_SequencerPanel)
     bpy.utils.register_class(NagatoGenesis)
 
     bpy.context.preferences.addons['nagato'].preferences.reset_messages()
@@ -349,4 +404,5 @@ def unregister():
     bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)
     # bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
     bpy.utils.unregister_class(NAGATO_PT_AssetBrowserPanel)
+    bpy.utils.unregister_class(NAGATO_PT_SequencerPanel)
     bpy.utils.unregister_class(NagatoGenesis)
