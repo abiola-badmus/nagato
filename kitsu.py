@@ -411,9 +411,14 @@ class NAGATO_OT_project_open_in_browser(Operator):
 
     project_id: bpy.props.StringProperty(name="Project ID", default="")
 
+    @classmethod
+    def poll(cls, context):
+        return bool(NagatoProfile.user) and NagatoProfile.active_project != None
+
     def execute(self, context):
         import webbrowser
-        url = "http://localhost/api"
+        url = gazu.project.get_project_url(NagatoProfile.active_project['id'])
+        print(NagatoProfile.active_project)
         webbrowser.open_new_tab(url)
         self.report({"INFO"}, f"Opened a browser at {url}")
 

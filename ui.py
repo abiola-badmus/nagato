@@ -108,6 +108,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             row.operator('nagato.update_all', text= 'update all files', icon = 'IMPORT')
         else:
             row.operator('nagato.check_out', text= 'download project files', icon = 'IMPORT')
+        row.operator('nagato.project_open_in_browser', icon= 'WORLD', text= '')
         
         ############# filter menu #############################
         # rf = 'no' if len(nagato.kitsu.task_tpyes) == 0 else 'yes' 
@@ -235,7 +236,7 @@ class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
         row = layout.row()
         # row.alert = True
         col = row.column()
-        col.operator('nagato.submit_shots_to_kitsu', text= 'Submit All  Shots to Kitsu')
+        col.operator('nagato.submit_shots_to_kitsu', text= 'Submit Selected Shots to Kitsu')
         col.operator('nagato.project_open_in_browser', icon= 'WORLD', text= 'Open Project in Browser')
                
 
