@@ -30,6 +30,8 @@ def create_main_collection(dummy):
     if 'main' not in bpy.data.collections.keys():
         collection = bpy.data.collections.new('main')
         bpy.context.scene.collection.children.link(collection)
+    if 'main' not in bpy.data.scenes.keys():
+        bpy.data.scenes.new('main')
 
 def update_list(scene):
     bpy.app.handlers.depsgraph_update_pre.remove(update_list)
@@ -88,13 +90,6 @@ def task_file_directory(blend_file_path, file_map_parser, task_type):
         # directory = f'{blend_file_path}_{task_type}.blend'
         # file_map_parser.set('file_map', task_type, task_type)
 
-def initialize_file(file_data):
-        # bpy.data.collections.remove(bpy.data.collections['Collection'])
-        file_name = bpy.path.basename(bpy.context.blend_data.filepath).rsplit('.',1)[0]
-        scene = bpy.data.scenes.get('main')
-        scene['task_file_data'] = file_data
-        # bpy.data.scenes['Scene'].name = scene_name[0] + '_' + scene_name[1]
-        bpy.ops.wm.save_mainfile()
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
     tasks_idx: IntProperty()
@@ -403,7 +398,9 @@ class NAGATO_OT_OpenFile(Operator):
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
-                initialize_file(file_data=task_file_data)
+                scene = bpy.data.scenes.get('main')
+                scene['task_file_data'] = task_file_data
+                bpy.ops.wm.save_mainfile()
             except RuntimeError as err:
                 self.report({'WARNING'}, f'{err}')
         else:
