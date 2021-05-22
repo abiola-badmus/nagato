@@ -30,6 +30,10 @@ def create_main_collection(dummy):
     if 'main' not in bpy.data.collections.keys():
         collection = bpy.data.collections.new('main')
         bpy.context.scene.collection.children.link(collection)
+    else:
+        if bpy.data.collections['main'].name_full != 'main':
+            collection = bpy.data.collections.new('main')
+            bpy.context.scene.collection.children.link(collection)
     if 'main' not in bpy.data.scenes.keys():
         bpy.data.scenes.new('main')
 
