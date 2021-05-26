@@ -94,6 +94,8 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll = row.column()
         coll.enabled = bool(nagato.kitsu.NagatoProfile.user)
         coll.operator('nagato.refresh', icon = 'FILE_REFRESH', text= '')
+        coll = row.column()
+        coll.operator('nagato.lunch_mixer', icon = 'MATSHADERBALL', text= '')
         
         ####### projects menu  #####################
         # r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
