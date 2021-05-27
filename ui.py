@@ -94,8 +94,6 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         coll = row.column()
         coll.enabled = bool(nagato.kitsu.NagatoProfile.user)
         coll.operator('nagato.refresh', icon = 'FILE_REFRESH', text= '')
-        coll = row.column()
-        coll.operator('nagato.lunch_mixer', icon = 'MATSHADERBALL', text= '')
         
         ####### projects menu  #####################
         # r = 'no' if len(nagato.kitsu.project_names) == 0 else 'yes'
@@ -148,8 +146,9 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
-        
         layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'get dependencies') 
+        layout.operator('nagato.lunch_mixer', icon = 'MATSHADERBALL', text= 'lunch_mixer')
+        layout.operator('nagato.import_textures', icon= 'LINKED', text= 'import_textures') 
         
         ########## task description ####################
         try:
