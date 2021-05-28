@@ -761,7 +761,7 @@ class NAGATO_MT_Projects(Menu):
     bl_idname = "nagato.select_project"
     
     def draw(self, context):
-        for project in NagatoProfile.tasks:
+        for project in sorted(NagatoProfile.tasks):
             layout = self.layout
             layout.operator('nagato.projects', text= project).project= project
 
@@ -772,7 +772,7 @@ class NAGATO_MT_FilterTask(Menu):
     
     def draw(self, context):
         
-        for task_type in NagatoProfile.tasks[NagatoProfile.active_project['name']]:
+        for task_type in sorted(NagatoProfile.tasks[NagatoProfile.active_project['name']]):
             layout = self.layout
             layout.operator('nagato.filter', text= task_type).filter = task_type
        

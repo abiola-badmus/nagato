@@ -41,6 +41,7 @@ class NAGATO_OT_LunchMixer(Operator):
 
 
     def execute(self, context):
+        print(NagatoProfile.tasks)
         subprocess.run(["taskkill","/F","/IM","Quixel Mixer.exe"])
         while process_exists('Quixel Mixer.exe'):
             pass  
