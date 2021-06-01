@@ -10,7 +10,7 @@ from bpy.types import (
 from bpy.props import (StringProperty)
 import pysvn
 import gazu
-from . import kitsu, nagato_icon
+from . import nagato_icon
 from nagato.kitsu import NagatoProfile
 
 ########## operators ################################
@@ -23,7 +23,7 @@ class OBJECT_OT_NagatoAdd(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN'
+        return bool(NagatoProfile.user)
 
 
     def execute(self, context):  
@@ -85,12 +85,12 @@ class OBJECT_OT_NagatoPublish(Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
         bpy.ops.wm.save_mainfile()
-        user = kitsu.NagatoProfile.user['full_name']
+        user = NagatoProfile.user['full_name']
         
         try:
             client.set_default_username(self.username)
@@ -141,7 +141,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
     
     @classmethod
     def poll(cls, context):
-        return bool(kitsu.NagatoProfile.user) and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -197,7 +197,7 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
     
     @classmethod
     def poll(cls, context):
-        return bool(kitsu.NagatoProfile.user) and bool(kitsu.NagatoProfile.active_project)
+        return bool(NagatoProfile.user) and bool(NagatoProfile.active_project)
 
     def execute(self, context):
         client.set_default_username(self.username)
@@ -227,7 +227,7 @@ class OBJECT_OT_NagatoRevert(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -247,7 +247,7 @@ class OBJECT_OT_NagatoResolve(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -266,7 +266,7 @@ class OBJECT_OT_NagatoCleanUp(Operator):
     
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
 
     def execute(self, context):
@@ -314,7 +314,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
     
     @classmethod
     def poll(cls, context):
-        return bool(kitsu.NagatoProfile.user) and kitsu.NagatoProfile.active_project != None
+        return bool(NagatoProfile.user) and NagatoProfile.active_project != None
 
     def execute(self, context):
         project_info = NagatoProfile.active_project
@@ -325,7 +325,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
                 repo_url = project_info['data']['remote_svn_url']
             root = project_info['file_tree']['working']['root']
             mount_point = project_info['file_tree']['working']['mountpoint']
-            file_path = os.path.expanduser(os.path.join(mount_point, root, kitsu.NagatoProfile.active_project['name'].replace(' ', '_').lower()))
+            file_path = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_').lower()))
             client.set_default_username(self.username)
             client.set_default_password(self.password)
             if os.path.isdir(file_path) == False:
@@ -371,7 +371,7 @@ class OBJECT_OT_ConsolidateMaps(Operator):
 
     @classmethod
     def poll(cls, context):
-        return kitsu.current_user[0] != 'NOT LOGGED IN' and bpy.data.is_saved == True
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
 
     def execute(self, context):
         try:
@@ -478,7 +478,7 @@ class OBJECT_OT_NagatoSvnUrl(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        project = gazu.project.get_project_by_name(kitsu.NagatoProfile.active_project['name'])
+        project = gazu.project.get_project_by_name(NagatoProfile.active_project['name'])
         project_id = project['id']
         gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
         gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})
