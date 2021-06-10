@@ -2,7 +2,7 @@ import os
 import bpy
 import bpy.utils.previews
 
-icons = ('update_file open_file resolve_conflict publish_file').split(' ')
+icons = ('update_file open_file resolve_conflict publish_file AddedIcon ConflictIcon DeletedIcon IgnoredIcon LockedIcon ModifiedIcon NormalIcon ReadOnlyIcon UnversionedIcon').split(' ')
 
 icon_collection = {}
 

@@ -147,6 +147,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
         layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies') 
+        layout.operator('nagato.revision_log', icon= 'LINKED', text= 'revision_log') 
         box = layout.box()
         row = box.row()
         row.operator('nagato.lunch_mixer', text= 'Send to Mixer')

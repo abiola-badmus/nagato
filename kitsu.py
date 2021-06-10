@@ -14,6 +14,9 @@ from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 import shutil
 import re
+import pysvn
+from . import nagato_icon
+svn_client = pysvn.Client()
 
 NagatoProfile = profile.NagatoProfile
 # time_queue = [0, 3]
@@ -37,6 +40,17 @@ def create_main_collection(dummy):
     if 'main' not in bpy.data.scenes.keys():
         bpy.data.scenes.new('main')
 
+#TODO update svn status on save
+@persistent
+def update_current_file_data(dummy):
+    last_opened_file = NagatoProfile.lastest_openfile['file_path']
+    last_opened_task_id = NagatoProfile.lastest_openfile['task_id']
+    if bpy.context.blend_data.filepath == last_opened_file:
+        for task in bpy.data.scenes['main'].tasks:
+            if task.task_id == last_opened_task_id:
+                task.file_status = 'modified'
+    bpy.context.scene.update_tag()
+
 def update_list(scene):
     bpy.app.handlers.depsgraph_update_pre.remove(update_list)
 
@@ -44,11 +58,13 @@ def update_list(scene):
         scene.tasks.clear()
     except:
         pass
-
-    for i, (task, task_status) in enumerate(displayed_tasks, 0):   
+    # TODO add file status
+    for i, (task, task_status, file_status, task_id) in enumerate(displayed_tasks, 0):   
         colection = scene.tasks.add()   
         colection.tasks = task
         colection.tasks_status = task_status 
+        colection.file_status = file_status
+        colection.task_id = task_id
         colection.tasks_idx = i
 
 def double_click(self, context):
@@ -99,6 +115,7 @@ class MyTasks(PropertyGroup):
     tasks_idx: IntProperty()
     tasks: StringProperty()
     tasks_status: StringProperty()
+    file_status: StringProperty()
     # click: BoolProperty(default=False, update=double_click)
 
 #################### mapping lists into column #################################
@@ -125,10 +142,26 @@ class TASKS_UL_list(bpy.types.UIList):
             else:
                 task_icon='BLENDER'
 
-            split = layout.split(factor= 0.8, align=True)
+            split = layout.split(factor= 0.7, align=True)
             # split.prop(item, 'click',icon = task_icon, text=item.tasks, emboss=False, translate=False)
             split.label(text = item.tasks, icon = task_icon)
             split.label(text = item.tasks_status)
+            if item.file_status == 'not_existing':
+                split.label(text = '', icon = 'ERROR')
+            elif item.file_status == 'normal':
+                split.label(text = '', icon_value = nagato_icon.icon('NormalIcon'))
+            elif item.file_status == 'modified':
+                split.label(text = '', icon_value = nagato_icon.icon('ModifiedIcon'))
+            elif item.file_status == 'conflicted':
+                split.label(text = '', icon_value = nagato_icon.icon('ConflictIcon'))
+            elif item.file_status == 'unversioned':
+                split.label(text = '', icon_value = nagato_icon.icon('UnversionedIcon'))
+            elif item.file_status == 'added':
+                split.label(text = '', icon_value = nagato_icon.icon('AddedIcon'))
+            elif item.file_status == 'missing':
+                split.label(text = '', icon = 'ERROR')
+            elif item.file_status == 'deleted':
+                split.label(text = '', icon_value = nagato_icon.icon('DeletedIcon'))
         elif self.layout_type in {'GRID'}:
             pass
 ############## Operators #######################################
@@ -314,8 +347,31 @@ class NAGATO_OT_Projects(Operator):
     project: StringProperty(default='')
     
     def execute(self, context):
-        # scene = context.scene
         NagatoProfile.active_project = gazu.project.get_project_by_name(self.project)
+        file_map_parser = ConfigParser()
+        project_tasks = NagatoProfile.tasks[NagatoProfile.active_project['name']]
+        task_types = project_tasks.keys()
+        for task_type in task_types:
+            tasks_by_type = project_tasks[task_type]
+            for task in tasks_by_type:
+                file_path = os.path.expanduser(task['working_file_path'])
+                mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+                root = NagatoProfile.active_project['file_tree']['working']['root']
+                project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
+                file_map_dir = os.path.join(project_folder, '.conf/file_map')
+
+                load_config(file_map_dir, file_map_parser)
+                task['full_working_file_path'] = task_file_directory(blend_file_path=file_path,
+                                                                    file_map_parser=file_map_parser,
+                                                                    task_type=task_type)
+                
+        # if not os.path.isdir(project_folder):
+        #     self.report({'WARNING'}, 'Project not downloaded, download project file')
+        # if not os.path.isfile(file_map_dir):
+        #     self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+
+
+        # scene = context.scene
         displayed_tasks.clear()
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list) 
@@ -335,12 +391,20 @@ class NAGATO_OT_Filter(Operator):
         # scene = context.scene
         displayed_tasks.clear()
         for file in NagatoProfile.tasks[NagatoProfile.active_project['name']][self.filter]:
+            print(file)
+            #TODO add file svn status
+            file_path = file['full_working_file_path']
+            if os.path.isfile(file_path):
+                file_status = str(svn_client.status(file_path)[0].text_status)
+            else:
+                file_status = 'not_existing'
+            print(file_status)
             NagatoProfile.active_task_type = self.filter
             if file['task_type_name'] == self.filter:
                 if file['sequence_name'] == None:
-                    displayed_tasks.append([file['entity_name'], file['task_status_short_name']])
+                    displayed_tasks.append([file['entity_name'], file['task_status_short_name'], file_status, file['id']])
                 else:
-                    displayed_tasks.append([file['sequence_name'] + '_' + file['entity_name'], file['task_status_short_name']])
+                    displayed_tasks.append([file['sequence_name'] + '_' + file['entity_name'], file['task_status_short_name'], file_status])
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
         self.report({'INFO'}, 'filtered by ' + self.filter)
@@ -401,6 +465,8 @@ class NAGATO_OT_OpenFile(Operator):
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
+                NagatoProfile.lastest_openfile['file_path'] = bpy.context.blend_data.filepath
+                NagatoProfile.lastest_openfile['task_id'] = active_id
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
                 scene = bpy.data.scenes.get('main')
                 scene['task_file_data'] = task_file_data
@@ -831,6 +897,7 @@ def register():
     bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
 
     bpy.app.handlers.depsgraph_update_pre.append(update_list)
+    bpy.app.handlers.save_post.append(update_current_file_data)
     bpy.app.handlers.load_post.append(create_main_collection)
     # bpy.app.handlers.load_factory_preferences_post.append(load_handler)
 

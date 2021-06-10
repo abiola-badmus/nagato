@@ -158,7 +158,77 @@ class OBJECT_OT_NagatoUpdate(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoUpdateAll(Operator):
+class NAGATO_OT_UpdateToRevision(Operator):
+    bl_label = 'set svn url'
+    bl_idname = 'nagato.update_to_revision'
+    bl_description = 'update_to_revision'
+
+    # @classmethod
+    # def poll(cls, context):
+    #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+
+        bpy.ops.screen.userpref_show("INVOKE_DEFAULT")
+
+        # Change area type
+        area = bpy.context.window_manager.windows[-1].screen.areas[0]
+        area.type = "TEXT_EDITOR"
+        bpy.data.texts.new('version log')
+        bpy.data.texts['version log'].write('##############log##############')
+        log = client.log(bpy.context.blend_data.filepath)
+        for i in log:
+            bpy.data.texts['version log'].write(f"\nrev={i.revision.number}, date={i.revision.date}, msg={i.message}")
+        return{'FINISHED'}
+
+class NAGATO_OT_RevisionLog(Operator):
+    bl_label = 'revision_log'
+    bl_idname = 'nagato.revision_log'
+    bl_description = 'revision_log'
+
+    # @classmethod
+    # def poll(cls, context):
+    #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
+
+    # def invoke(self, context, event):
+    #     return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        # log_file = os.path.join(bpy.utils.user_resource('CONFIG', 'nagato'), "revision.log")
+        # with open(log_file, "a") as file:
+        #     file.truncate(0)
+        #     file.write("##############log##############")
+        #     for i, log in enumerate(logs):
+        #         file.write(f"\nrev={log.revision.number} {i}, date={log.revision.date}, msg={log.message}")
+
+
+        bpy.ops.screen.userpref_show("INVOKE_DEFAULT")
+
+        # Change area type
+        area = bpy.context.window_manager.windows[-1].screen.areas[0]
+        area.type = "TEXT_EDITOR"
+        if bpy.data.texts.get('version log'):
+            log_text = bpy.data.texts.get('version log')
+            log_text.clear()
+        else:
+            log_text = bpy.data.texts.new('version log')
+
+        bpy.data.texts['version log'].write('##############log##############')
+        logs = client.log(bpy.context.blend_data.filepath)
+        for i, log in enumerate(logs, 1):
+            log_text.write(f"\nrev={log.revision.number} {i}, date={log.revision.date}, msg={log.message}")
+        bpy.data.texts['version log'].write('\n##############log end##############')
+        
+        for area in bpy.context.screen.areas:
+            if area.type == 'TEXT_EDITOR':
+                area.spaces[0].text = log_text # make loaded text file visible
+        return{'FINISHED'}
+
+
+class Nagato_OT_UpdateAll(Operator):
     bl_label = 'Update project files'
     bl_idname = 'nagato.update_all'
     bl_description = 'Update all files in project repository'
@@ -220,7 +290,7 @@ class OBJECT_OT_NagatoUpdateAll(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoRevert(Operator):
+class Nagato_OT_Revert(Operator):
     bl_label = 'reset file'
     bl_idname = 'nagato.revert'
     bl_description = 'revert to last checkpoint'
@@ -240,7 +310,7 @@ class OBJECT_OT_NagatoRevert(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoResolve(Operator):
+class Nagato_OT_Resolve(Operator):
     bl_label = 'resolve conflict'
     bl_idname = 'nagato.resolve'
     bl_description = 'resolve file conflict'
@@ -259,7 +329,7 @@ class OBJECT_OT_NagatoResolve(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoCleanUp(Operator):
+class Nagato_OT_CleanUp(Operator):
     bl_label = 'clean up'
     bl_idname = 'nagato.clean_up'
     bl_description = 'clean up files'
@@ -283,7 +353,7 @@ class OBJECT_OT_NagatoCleanUp(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoCheckOut(Operator):
+class Nagato_OT_CheckOut(Operator):
     bl_label = 'Download files'
     bl_idname = 'nagato.check_out'
     bl_description = 'checkout project files'
@@ -361,7 +431,7 @@ class OBJECT_OT_NagatoCheckOut(Operator):
             return{'FINISHED'}
 
 
-class OBJECT_OT_ConsolidateMaps(Operator):
+class Nagato_OT_ConsolidateMaps(Operator):
     bl_label = 'Consolidate'
     bl_idname = 'nagato.consolidate'
     bl_description = 'consolidate all external images to maps folder'
@@ -452,7 +522,7 @@ class OBJECT_OT_ConsolidateMaps(Operator):
         return{'FINISHED'}
 
 
-class OBJECT_OT_NagatoSvnUrl(Operator):
+class Nagato_OT_SvnUrl(Operator):
     bl_label = 'set svn url'
     bl_idname = 'nagato.svn_url'
     bl_description = 'set svn url'
@@ -510,14 +580,16 @@ classes = [
     OBJECT_OT_NagatoAdd,
     OBJECT_OT_NagatoPublish,
     OBJECT_OT_NagatoUpdate,
-    OBJECT_OT_NagatoUpdateAll,
-    OBJECT_OT_NagatoRevert,
-    OBJECT_OT_NagatoResolve,
-    OBJECT_OT_NagatoCleanUp,
-    OBJECT_OT_NagatoCheckOut,
-    OBJECT_OT_ConsolidateMaps,
+    NAGATO_OT_UpdateToRevision,
+    Nagato_OT_UpdateAll,
+    Nagato_OT_Revert,
+    Nagato_OT_Resolve,
+    Nagato_OT_CleanUp,
+    Nagato_OT_CheckOut,
+    Nagato_OT_ConsolidateMaps,
     NAGATO_MT_ProjectFiles,
-    OBJECT_OT_NagatoSvnUrl
+    Nagato_OT_SvnUrl,
+    NAGATO_OT_RevisionLog,
 ]
         
         
