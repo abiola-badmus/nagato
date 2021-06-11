@@ -25,6 +25,7 @@ class NagatoProfile():
     refresh_token = ''
     ldap = False
 
+    lastest_openfile = {'file_path': None, 'task_id': None}
     tasks = dict()
     active_project = None
     active_task_type = None
@@ -64,6 +65,10 @@ class NagatoProfile():
     @classmethod
     def refresh_tasks(cls):
         tasks = cls.get_zou_tasks()
+        #TODO prebuild file path from genesis
+        for task in tasks:
+            task['working_file_path'] = gazu.files.build_working_file_path(task['id'])
+
         cls.tasks = cls.structure_task(tasks)
         cls.active_project = None
         cls.active_task_type = None
@@ -82,6 +87,8 @@ class NagatoProfile():
                 new_grouped_tasks[group_name] = [task]
             else:
                 new_grouped_tasks[group_name].append(task)
+        for key in new_grouped_tasks.keys():
+            new_grouped_tasks[key] = sorted(new_grouped_tasks[key], key = lambda i: i['entity_name'])
         return(new_grouped_tasks)
     
     @classmethod
@@ -91,6 +98,7 @@ class NagatoProfile():
             project_tasks = tasks_by_projects[project]
             project_tasks_by_type = cls.group_task(project_tasks, 'task_type_name')
             tasks_by_projects[project] = project_tasks_by_type
+            
         return tasks_by_projects
 
     @staticmethod

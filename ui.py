@@ -140,14 +140,18 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         col.separator()
         col.menu("NAGATO_MT_ProjectFiles", icon="DOWNARROW_HLT", text="")
         col.separator()
-        col.operator('nagato.publish', icon_value = nagato_icon.icon('publish_file'), text='')
+        col.operator('nagato.publish_selected', icon_value = nagato_icon.icon('publish_file'), text='')
         col.operator('nagato.update', icon_value = nagato_icon.icon('update_file'), text='')
 
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
-        
-        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'get dependencies') 
+        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies') 
+        layout.operator('nagato.revision_log', icon= 'LINKED', text= 'revision_log') 
+        box = layout.box()
+        row = box.row()
+        row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
+        row.operator('nagato.import_textures', text= 'Import Mixer Textures') 
         
         ########## task description ####################
         try:
@@ -325,7 +329,14 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         name="Scenes Name",
         default='<Scene>',
     )
-    
+    mixer_pref_path: StringProperty(
+        name="Mixer Prefrence path",
+        default=f'{os.getenv("APPDATA")}/Quixel/Quixel Mixer/Settings/MixerPrefs.xml',
+    )
+    mixer_luncher: StringProperty(
+        name="Mixer Launcher path",
+        default=f'C:/Users/Itadori/Eaxum/Software/Quixel/QuixelMixer-2021.1.1/Quixel Mixer.exe',
+    )
 
     def reset_messages(self):
         self.ok_message = ''
@@ -350,6 +361,9 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         # box.prop(self, "project_mount_point")
         layout = self.layout
         layout.operator('nagato.login')
+        box = layout.box()
+        box.prop(self, "mixer_luncher")
+        box.prop(self, "mixer_pref_path")
 
         ####### admin user settings  #####################
         if nagato.kitsu.NagatoProfile.user and nagato.kitsu.NagatoProfile.user['role'] == 'admin':
