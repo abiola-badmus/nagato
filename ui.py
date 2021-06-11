@@ -140,7 +140,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         col.separator()
         col.menu("NAGATO_MT_ProjectFiles", icon="DOWNARROW_HLT", text="")
         col.separator()
-        col.operator('nagato.publish', icon_value = nagato_icon.icon('publish_file'), text='')
+        col.operator('nagato.publish_selected', icon_value = nagato_icon.icon('publish_file'), text='')
         col.operator('nagato.update', icon_value = nagato_icon.icon('update_file'), text='')
 
         

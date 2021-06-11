@@ -87,6 +87,8 @@ class NagatoProfile():
                 new_grouped_tasks[group_name] = [task]
             else:
                 new_grouped_tasks[group_name].append(task)
+        for key in new_grouped_tasks.keys():
+            new_grouped_tasks[key] = sorted(new_grouped_tasks[key], key = lambda i: i['entity_name'])
         return(new_grouped_tasks)
     
     @classmethod
@@ -96,6 +98,7 @@ class NagatoProfile():
             project_tasks = tasks_by_projects[project]
             project_tasks_by_type = cls.group_task(project_tasks, 'task_type_name')
             tasks_by_projects[project] = project_tasks_by_type
+            
         return tasks_by_projects
 
     @staticmethod

@@ -11,7 +11,9 @@ from bpy.props import (StringProperty)
 import pysvn
 import gazu
 from . import nagato_icon
-from nagato.kitsu import NagatoProfile
+from nagato.kitsu import NagatoProfile, load_config, task_file_directory, update_list, update_ui_list
+from configparser import ConfigParser, NoOptionError
+import nagato.kitsu
 
 ########## operators ################################
 client = pysvn.Client()
@@ -105,6 +107,127 @@ class OBJECT_OT_NagatoPublish(Operator):
             self.report({'INFO'}, "Publish successful")
         except pysvn._pysvn_3_7.ClientError as e:
             self.report({'WARNING'}, str(e))
+        return{'FINISHED'}
+
+
+class OBJECT_OT_NagatoPublishSelected(Operator):
+    bl_label = 'Publish selected file'
+    bl_idname = 'nagato.publish_selected'
+    bl_description = 'Publish selected file to project repository'
+    
+    comment: StringProperty(
+        name = 'comment',
+        default = 'file published',
+        description = 'comment for publishing'
+        )
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+    logged_in = True
+
+    @classmethod
+    def poll(cls, context):
+        try:
+            task_list_index = bpy.context.scene.tasks_idx
+            NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]['id']
+            status = 1
+        except:
+            status = 0
+        return status == 1
+
+    def draw(self, context):
+        if self.logged_in:
+            layout = self.layout
+            layout.prop(self, "comment")
+        else:
+            layout = self.layout
+            layout.prop(self, "comment")
+            layout.prop(self, "username")
+            layout.prop(self, "password")
+
+        
+    def invoke(self, context, event):
+        try:
+            client.update(f'{bpy.context.blend_data.filepath}')
+        except pysvn._pysvn_3_7.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                self.logged_in = False
+                return context.window_manager.invoke_props_dialog(self)
+        return context.window_manager.invoke_props_dialog(self)
+
+    @classmethod
+    def poll(cls, context):
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
+
+
+    def execute(self, context):
+        #TODO change status on publish
+        file_map_parser = ConfigParser()
+        task_list_index = bpy.context.scene.tasks_idx
+        active_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]['id']
+        entity_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]["entity_id"]
+        file_path = os.path.expanduser(gazu.files.build_working_file_path(active_id))
+        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
+            [NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
+        root = NagatoProfile.active_project['file_tree']['working']['root']
+        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
+        file_map_dir = os.path.join(project_folder, '.conf/file_map')
+
+        if not os.path.isdir(project_folder):
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        if not os.path.isfile(file_map_dir):
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+        load_config(file_map_dir, file_map_parser)
+        directory = task_file_directory(blend_file_path=file_path,
+                                        file_map_parser=file_map_parser,
+                                        task_type=task_type)
+
+
+
+        # bpy.ops.wm.save_mainfile()
+        user = NagatoProfile.user['full_name']
+        
+        try:
+            client.set_default_username(self.username)
+            client.set_default_password(self.password)
+
+            client.checkin(directory, f'{user} : {self.comment}')
+            statuses = client.status(os.path.dirname(directory) + 'maps')
+            for status in statuses:
+                if str(status.text_status) in {'modified', 'added'}:
+                    map_dir = str(status)[13:-1].replace('\\\\', '/')
+                    client.checkin([map_dir[1:-1]], self.comment)
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
+            self.report({'INFO'}, "Publish successful")
+        except pysvn._pysvn_3_7.ClientError as e:
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
+            self.report({'WARNING'}, str(e))
+        bpy.context.scene.update_tag()
+        bpy.app.handlers.depsgraph_update_pre.append(update_list)
+
         return{'FINISHED'}
 
     
@@ -579,6 +702,7 @@ class NAGATO_MT_ProjectFiles(Menu):
 classes = [
     OBJECT_OT_NagatoAdd,
     OBJECT_OT_NagatoPublish,
+    OBJECT_OT_NagatoPublishSelected,
     OBJECT_OT_NagatoUpdate,
     NAGATO_OT_UpdateToRevision,
     Nagato_OT_UpdateAll,
