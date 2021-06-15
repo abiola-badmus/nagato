@@ -3,7 +3,7 @@ try:
     import bpy
 except ModuleNotFoundError:
     pass
-import gazu
+from . import gazu
 
 # Set/created upon register.
 profile_path = ''

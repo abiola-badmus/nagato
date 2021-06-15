@@ -1,12 +1,11 @@
-from gazu import project, shot
 from typing import Sequence
 import bpy
 import os
 import time
 import json
-import gazu
+from . import gazu
 from . import profile
-from gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
+from .gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
@@ -14,7 +13,7 @@ from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 import shutil
 import re
-import pysvn
+from . import pysvn
 from . import nagato_icon
 svn_client = pysvn.Client()
 
@@ -115,21 +114,34 @@ def load_config(file_directory, config_parser):
         data = f.read()
     config_parser.read_string(data)
 
-def task_file_directory(blend_file_path, file_map_parser, task_type):
-    try:
-        task_type_map = file_map_parser.get('file_map', task_type).lower()
-        if task_type_map == 'base':
-            directory = f'{blend_file_path}.blend'
-            return directory
-        elif task_type_map == 'none':
-            pass
-        else:
-             directory = f'{blend_file_path}_{task_type_map}.blend'
-             return directory
-    except NoOptionError:
-        return None
-        # directory = f'{blend_file_path}_{task_type}.blend'
-        # file_map_parser.set('file_map', task_type, task_type)
+def task_file_directory(task_type, blend_file_path, active_project):
+    file_map_parser = ConfigParser()
+    mount_point = active_project['file_tree']['working']['mountpoint']
+    root = active_project['file_tree']['working']['root']
+    project_folder = os.path.expanduser(os.path.join(mount_point, root, active_project['name'].replace(' ','_').lower()))
+    if os.path.isdir(project_folder):
+        file_map_dir = os.path.join(project_folder, '.conf/file_map')
+        load_config(file_map_dir, file_map_parser)
+
+        if not os.path.isdir(project_folder):
+            return 'Project not downloaded'
+        if not os.path.isfile(file_map_dir):
+            return 'task file map does not exist'
+
+        try:
+            task_type_map = file_map_parser.get('file_map', task_type).lower()
+            if task_type_map == 'base':
+                directory = f'{blend_file_path}.blend'
+                return directory
+            elif task_type_map == 'none':
+                pass
+            else:
+                directory = f'{blend_file_path}_{task_type_map}.blend'
+                return directory
+        except NoOptionError:
+            return None
+            # directory = f'{blend_file_path}_{task_type}.blend'
+            # file_map_parser.set('file_map', task_type, task_type)
 
 ############################ Property groups #####################################################
 class MyTasks(PropertyGroup):
@@ -146,7 +158,9 @@ class TASKS_UL_list(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             active_task_type = NagatoProfile.active_task_type
             active_task_id = NagatoProfile.lastest_openfile['task_id']
-            if item.task_id == active_task_id:
+            if active_task_type == None:
+                task_icon='BLENDER'
+            elif item.task_id == active_task_id:
                 task_icon='REC'
             elif active_task_type.lower() in {'modeling'}:
                 task_icon='CUBE'
@@ -371,23 +385,14 @@ class NAGATO_OT_Projects(Operator):
     
     def execute(self, context):
         NagatoProfile.active_project = gazu.project.get_project_by_name(self.project)
-        file_map_parser = ConfigParser()
         project_tasks = NagatoProfile.tasks[NagatoProfile.active_project['name']]
         NagatoProfile.active_task_type = None
         task_types = project_tasks.keys()
         for task_type in task_types:
             tasks_by_type = project_tasks[task_type]
             for task in tasks_by_type:
-                file_path = os.path.expanduser(task['working_file_path'])
-                mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
-                root = NagatoProfile.active_project['file_tree']['working']['root']
-                project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
-                file_map_dir = os.path.join(project_folder, '.conf/file_map')
-                if os.path.isdir(project_folder):
-                    load_config(file_map_dir, file_map_parser)
-                    task['full_working_file_path'] = task_file_directory(blend_file_path=file_path,
-                                                                        file_map_parser=file_map_parser,
-                                                                        task_type=task_type)
+                blend_file_path = os.path.expanduser(task['working_file_path'])
+                task['full_working_file_path'] = task_file_directory(task_type, blend_file_path, NagatoProfile.active_project)
                 
         # if not os.path.isdir(project_folder):
         #     self.report({'WARNING'}, 'Project not downloaded, download project file')
@@ -448,38 +453,30 @@ class NAGATO_OT_OpenFile(Operator):
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
-        file_map_parser = ConfigParser()
+        active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
-        active_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index]['id']
-        entity_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index]["entity_id"]
-        file_path = os.path.expanduser(gazu.files.build_working_file_path(active_id))
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        active_task_id = active_task['id']
+        entity_id = active_project_tasks[NagatoProfile.active_task_type][task_list_index]["entity_id"]
         task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
             [NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
-        root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
-        file_map_dir = os.path.join(project_folder, '.conf/file_map')
-
-        if not os.path.isdir(project_folder):
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+        if directory == 'Project not downloaded':
             self.report({'WARNING'}, 'Project not downloaded, download project file')
             return{'FINISHED'}
-        if not os.path.isfile(file_map_dir):
+        elif directory == 'task file map does not exist':
             self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
             return{'FINISHED'}
-        load_config(file_map_dir, file_map_parser)
-        directory = task_file_directory(blend_file_path=file_path,
-                                        file_map_parser=file_map_parser,
-                                        task_type=task_type)
-        task_file_data = {'task_type':task_type, 'task_id':active_id, 'entity_id':entity_id}
+        task_file_data = {'task_type':task_type, 'task_id':active_task_id, 'entity_id':entity_id}
         if directory:
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
                 bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
                 NagatoProfile.lastest_openfile['file_path'] = bpy.context.blend_data.filepath
-                NagatoProfile.lastest_openfile['task_id'] = active_id
+                NagatoProfile.lastest_openfile['task_id'] = active_task_id
                 scene = bpy.data.scenes.get('main')
                 scene['task_file_data'] = task_file_data
                 # bpy.ops.wm.save_mainfile()

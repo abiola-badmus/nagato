@@ -11,8 +11,8 @@ from bpy.props import (StringProperty)
 import os
 import subprocess
 import xml.etree.ElementTree as ET
-import pysvn
-import gazu
+from . import pysvn
+from . import gazu
 from . import kitsu, nagato_icon
 from nagato.kitsu import NagatoProfile
 import shutil

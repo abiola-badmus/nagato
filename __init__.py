@@ -2,7 +2,7 @@ bl_info = {
     "name": "Nagato",
     "author": "Adesada J. Aderemi, Taiwo Folu",
     "version": (0, 2, 9),
-    "blender": (2, 91, 2),
+    "blender": (2, 93, 0),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Perform version control commands and project managements",
     "warning": "",
@@ -14,86 +14,7 @@ modulesNames = ['svn', 'ui', 'kitsu', 'asset_browser', 'mixer']
 import bpy
 import sys
 import importlib
-import shutil
-import ctypes
-import filecmp
-import os.path
 from . import nagato_icon
-
-
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
-
-# moves pysvn and gazu to blenders python directory
-def are_dir_trees_equal(dir1, dir2):
-    """
-    Compare two directories recursively. Files in each directory are
-    assumed to be equal if their names and contents are equal.
-
-    @param dir1: First directory path
-    @param dir2: Second directory path
-
-    @return: True if the directory trees are the same and 
-        there were no errors while accessing the directories or files, 
-        False otherwise.
-   """
-    dirs_cmp = filecmp.dircmp(dir1, dir2)
-    if len(dirs_cmp.left_only)>0 or len(dirs_cmp.right_only)>0 or \
-        len(dirs_cmp.funny_files)>0:
-        return False
-    (_, mismatch, errors) =  filecmp.cmpfiles(
-        dir1, dir2, dirs_cmp.common_files, shallow=False)
-    if len(mismatch)>0 or len(errors)>0:
-        return False
-    for common_dir in dirs_cmp.common_dirs:
-        new_dir1 = os.path.join(dir1, common_dir)
-        new_dir2 = os.path.join(dir2, common_dir)
-        if not are_dir_trees_equal(new_dir1, new_dir2):
-            return False
-    return True
-
-
-def dependecy(directory, destination):
-    try:
-        if are_dir_trees_equal(directory, destination) is False:
-            shutil.rmtree(destination)
-            shutil.copytree(directory, destination)
-    except FileNotFoundError:
-        shutil.copytree(directory, destination)
-
-
-def move_dependecies():
-    if bpy.utils.script_path_pref() != None:
-        pref_directory_pysvn = bpy.utils.script_path_pref() + '/addons/nagato/pysvn'
-        pref_directory_gazu = bpy.utils.script_path_pref() + '/addons/nagato/gazu'
-    user_directory_pysvn = bpy.utils.script_path_user() + '/addons/nagato/pysvn'
-    user_directory_gazu = bpy.utils.script_path_user() + '/addons/nagato/gazu'
-    destination_pysvn = sys.executable + '/../../lib/site-packages/pysvn'
-    destination_gazu = sys.executable + '/../../lib/site-packages/gazu'
-    if is_admin():
-        try:
-            dependecy(user_directory_pysvn, destination_pysvn)
-            dependecy(user_directory_gazu, destination_gazu)
-        except FileNotFoundError:
-            dependecy(pref_directory_pysvn, destination_pysvn)
-            dependecy(pref_directory_gazu, destination_gazu)
-    else:
-        try:
-            dependecy(user_directory_pysvn, destination_pysvn)
-            dependecy(user_directory_gazu, destination_gazu)
-        except FileNotFoundError:
-            dependecy(pref_directory_pysvn, destination_pysvn)
-            dependecy(pref_directory_gazu, destination_gazu)
-        except PermissionError:
-            loc = sys.executable
-            py_loc = bpy.utils.script_path_user() + '/addons/nagato/util/activate.py'
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", loc, f'--python "{py_loc}"', None, 1)    
-            exit()
-
-move_dependecies()
 
 modulesFullNames = {}
 

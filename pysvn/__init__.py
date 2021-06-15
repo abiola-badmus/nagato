@@ -113,8 +113,11 @@ try:
     import os
     old_path = os.environ['PATH']
     os.environ['PATH'] = '%s;%s' % (os.path.dirname( __file__ ), old_path)
-    import pysvn._pysvn_3_7
-    _pysvn = pysvn._pysvn_3_7
+    add_dll_handle = os.add_dll_directory( os.path.dirname( __file__ ) )
+
+    sys.path.append(os.getcwd())
+    import pysvn._pysvn_3_9
+    _pysvn = pysvn._pysvn_3_9
 
     os.environ['PATH'] = old_path
     del os
@@ -293,6 +296,8 @@ class svn_err:
     fs_corrupt_proplist = 160065
     fs_ambiguous_checksum_rep = 160067
     fs_unrecognized_ioctl_code = 160068
+    fs_rep_sharing_not_allowed = 160069
+    fs_rep_sharing_not_supported = 160070
     repos_locked = 165000
     repos_hook_failure = 165001
     repos_bad_args = 165002

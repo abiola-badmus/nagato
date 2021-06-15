@@ -8,8 +8,8 @@ from bpy.types import (
     Menu
 )
 from bpy.props import (StringProperty)
-import pysvn
-import gazu
+from . import pysvn
+from . import gazu
 from . import nagato_icon
 from nagato.kitsu import NagatoProfile, load_config, task_file_directory, update_list, update_ui_list
 from configparser import ConfigParser, NoOptionError
@@ -37,7 +37,7 @@ class OBJECT_OT_NagatoAdd(Operator):
                 self.report({'INFO'}, "File Added to Repository")
             else:
                 self.report({'WARNING'}, "All files under version control")
-        except pysvn._pysvn_3_7.ClientError:
+        except pysvn._pysvn.ClientError:
             self.report({'WARNING'}, "Not a working copy")
         return{'FINISHED'}
         
@@ -79,7 +79,7 @@ class OBJECT_OT_NagatoPublish(Operator):
     def invoke(self, context, event):
         try:
             client.update(f'{bpy.context.blend_data.filepath}')
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             if str(e) == 'callback_get_login required':
                 self.logged_in = False
                 return context.window_manager.invoke_props_dialog(self)
@@ -105,7 +105,7 @@ class OBJECT_OT_NagatoPublish(Operator):
                     map_dir = str(status)[13:-1].replace('\\\\', '/')
                     client.checkin([map_dir[1:-1]], self.comment)
             self.report({'INFO'}, "Publish successful")
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
@@ -157,7 +157,7 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
     def invoke(self, context, event):
         try:
             client.update(f'{bpy.context.blend_data.filepath}')
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             if str(e) == 'callback_get_login required':
                 self.logged_in = False
                 return context.window_manager.invoke_props_dialog(self)
@@ -169,36 +169,23 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
 
 
     def execute(self, context):
-        #TODO change status on publish
-        file_map_parser = ConfigParser()
+        active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
-        active_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index]['id']
-        entity_id = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index]["entity_id"]
-        file_path = os.path.expanduser(gazu.files.build_working_file_path(active_id))
-        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
-            [NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
-        root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ','_').lower()))
-        file_map_dir = os.path.join(project_folder, '.conf/file_map')
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
 
-        if not os.path.isdir(project_folder):
+        if directory == 'Project not downloaded':
             self.report({'WARNING'}, 'Project not downloaded, download project file')
             return{'FINISHED'}
-        if not os.path.isfile(file_map_dir):
+        elif directory == 'task file map does not exist':
             self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
             return{'FINISHED'}
-        load_config(file_map_dir, file_map_parser)
-        directory = task_file_directory(blend_file_path=file_path,
-                                        file_map_parser=file_map_parser,
-                                        task_type=task_type)
-
-
-
         # bpy.ops.wm.save_mainfile()
         user = NagatoProfile.user['full_name']
+        print(pysvn.__dict__)
         
         try:
             client.set_default_username(self.username)
@@ -217,7 +204,7 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
                             active_task_type=NagatoProfile.active_task_type
                             )
             self.report({'INFO'}, "Publish successful")
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             update_ui_list(
                             displayed_tasks=nagato.kitsu.displayed_tasks,
                             tasks=NagatoProfile.tasks,
@@ -256,7 +243,7 @@ class OBJECT_OT_NagatoUpdate(Operator):
             bpy.ops.wm.revert_mainfile()
             self.report({'INFO'}, "Update Successful")
             return{'FINISHED'}
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             if str(e) == 'callback_get_login required':
                 return context.window_manager.invoke_props_dialog(self)
             self.report({'WARNING'}, str(e))
@@ -276,7 +263,99 @@ class OBJECT_OT_NagatoUpdate(Operator):
             client.update(bpy.path.abspath('//') + 'maps')
             bpy.ops.wm.revert_mainfile()
             self.report({'INFO'}, "Update Successful")
-        except pysvn._pysvn_3_7.ClientError as err:
+        except pysvn._pysvn.ClientError as err:
+            self.report({'WARNING'}, str(err))
+        return{'FINISHED'}
+
+
+class OBJECT_OT_NagatoUpdateSelected(Operator):
+    bl_label = 'Update selected file'
+    bl_idname = 'nagato.update_selected'
+    bl_description = 'Update selected file from project repository'
+
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
+        
+    def invoke(self, context, event):
+        active_project = NagatoProfile.active_project
+        task_list_index = bpy.context.scene.tasks_idx
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+
+        if directory == 'Project not downloaded':
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        elif directory == 'task file map does not exist':
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+
+        try:
+            client.update(directory)
+            client.update(os.path.dirname(directory) + 'maps')
+            # bpy.ops.wm.revert_mainfile()
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
+            self.report({'INFO'}, "Update Successful")
+            return{'FINISHED'}
+        except pysvn._pysvn.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                return context.window_manager.invoke_props_dialog(self)
+            self.report({'WARNING'}, str(e))
+            return{'FINISHED'}
+    
+    @classmethod
+    def poll(cls, context):
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
+
+
+    def execute(self, context):
+        active_project = NagatoProfile.active_project
+        task_list_index = bpy.context.scene.tasks_idx
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+
+        if directory == 'Project not downloaded':
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        elif directory == 'task file map does not exist':
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+
+        try:
+            client.set_default_username(self.username)
+            client.set_default_password(self.password)
+
+            client.update(directory)
+            client.update(os.path.dirname(directory) + 'maps')
+            # bpy.ops.wm.revert_mainfile()
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
+            self.report({'INFO'}, "Update Successful")
+        except pysvn._pysvn.ClientError as err:
             self.report({'WARNING'}, str(err))
         return{'FINISHED'}
 
@@ -286,6 +365,12 @@ class NAGATO_OT_UpdateToRevision(Operator):
     bl_idname = 'nagato.update_to_revision'
     bl_description = 'update_to_revision'
 
+    revision: StringProperty(
+        name = 'revision',
+        default = '',
+        description = 'revision to revert to'
+        )
+
     # @classmethod
     # def poll(cls, context):
     #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
@@ -294,18 +379,8 @@ class NAGATO_OT_UpdateToRevision(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-
-        bpy.ops.screen.userpref_show("INVOKE_DEFAULT")
-
-        # Change area type
-        area = bpy.context.window_manager.windows[-1].screen.areas[0]
-        area.type = "TEXT_EDITOR"
-        bpy.data.texts.new('version log')
-        bpy.data.texts['version log'].write('##############log##############')
-        log = client.log(bpy.context.blend_data.filepath)
-        for i in log:
-            bpy.data.texts['version log'].write(f"\nrev={i.revision.number}, date={i.revision.date}, msg={i.message}")
         return{'FINISHED'}
+
 
 class NAGATO_OT_RevisionLog(Operator):
     bl_label = 'revision_log'
@@ -341,8 +416,10 @@ class NAGATO_OT_RevisionLog(Operator):
 
         bpy.data.texts['version log'].write('##############log##############')
         logs = client.log(bpy.context.blend_data.filepath)
+        logs.reverse()
+
         for i, log in enumerate(logs, 1):
-            log_text.write(f"\nrev={log.revision.number} {i}, date={log.revision.date}, msg={log.message}")
+            log_text.write(f"\nrev={i}, date={log.revision.date}, msg={log.message}")
         bpy.data.texts['version log'].write('\n##############log end##############')
         
         for area in bpy.context.screen.areas:
@@ -377,7 +454,7 @@ class Nagato_OT_UpdateAll(Operator):
             for file in os.listdir(project_folder):
                 try:
                     client.update(os.path.join(project_folder, file))
-                except pysvn._pysvn_3_7.ClientError as error:
+                except pysvn._pysvn.ClientError as error:
                     if str(error) == 'callback_get_login required':
                         return context.window_manager.invoke_props_dialog(self)
                     self.report({'WARNING'}, str(error))
@@ -406,7 +483,7 @@ class Nagato_OT_UpdateAll(Operator):
                     if bpy.data.is_saved:
                         bpy.ops.wm.revert_mainfile()
                     self.report({'INFO'}, "Update Successful")
-                except pysvn._pysvn_3_7.ClientError as error:
+                except pysvn._pysvn.ClientError as error:
                     self.report({'WARNING'}, str(error))
         except FileNotFoundError:
             self.report({'WARNING'}, 'project files do not exist')
@@ -428,7 +505,48 @@ class Nagato_OT_Revert(Operator):
             client.revert(f'{bpy.context.blend_data.filepath}')
             bpy.ops.wm.revert_mainfile()
             self.report({'INFO'}, "reverted")
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
+            self.report({'WARNING'}, str(e))
+        return{'FINISHED'}
+
+
+class Nagato_OT_RevertSelected(Operator):
+    bl_label = 'reset file'
+    bl_idname = 'nagato.revert_selected'
+    bl_description = 'revert to last checkpoint'
+    
+    @classmethod
+    def poll(cls, context):
+        return bool(NagatoProfile.user) and bpy.data.is_saved == True
+
+
+    def execute(self, context):
+        active_project = NagatoProfile.active_project
+        task_list_index = bpy.context.scene.tasks_idx
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+
+        if directory == 'Project not downloaded':
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        elif directory == 'task file map does not exist':
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+
+        try:
+            client.revert(directory)
+            # bpy.ops.wm.revert_mainfile()
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
+            self.report({'INFO'}, "reverted")
+        except pysvn._pysvn.ClientError as e:
             self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
@@ -444,10 +562,31 @@ class Nagato_OT_Resolve(Operator):
 
 
     def execute(self, context):
+        active_project = NagatoProfile.active_project
+        task_list_index = bpy.context.scene.tasks_idx
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+
+        if directory == 'Project not downloaded':
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        elif directory == 'task file map does not exist':
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+
         try:
-            client.resolved(f'{bpy.context.blend_data.filepath}')
+            client.resolved(directory)
+            update_ui_list(
+                            displayed_tasks=nagato.kitsu.displayed_tasks,
+                            tasks=NagatoProfile.tasks,
+                            active_project=NagatoProfile.active_project['name'],
+                            active_task_type=NagatoProfile.active_task_type
+                            )
             self.report({'INFO'}, "conflict resolved")
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
@@ -471,7 +610,7 @@ class Nagato_OT_CleanUp(Operator):
         try:
             client.cleanup(root)
             self.report({'INFO'}, "clean up succesful")
-        except pysvn._pysvn_3_7.ClientError as e:
+        except pysvn._pysvn.ClientError as e:
             self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
@@ -530,7 +669,7 @@ class Nagato_OT_CheckOut(Operator):
                         self.report({'INFO'}, "project files downloaded")
                     else:
                         self.report({'INFO'}, "SVN url invalid")
-                except pysvn._pysvn_3_7.ClientError as e:
+                except pysvn._pysvn.ClientError as e:
                     os.removedirs(file_path)
                     self.report({'WARNING'}, str(e))
             elif len(os.listdir(file_path)) == 0:
@@ -541,7 +680,7 @@ class Nagato_OT_CheckOut(Operator):
                     else:
                         os.removedirs(file_path)
                         self.report({'WARNING'}, "SVN url invalid")
-                except pysvn._pysvn_3_7.ClientError as e:
+                except pysvn._pysvn.ClientError as e:
                     self.report({'WARNING'}, str(e))
             elif os.path.isdir(file_path + '/.svn') == True:
                 bpy.ops.nagato.update_all()
@@ -639,7 +778,7 @@ class Nagato_OT_ConsolidateMaps(Operator):
                         client.add(r[1:-1])
                         client.checkin([r[1:-1]], f'commit consolidated maps')
                 self.report({'INFO'}, "Maps Colsolidated")
-            except pysvn._pysvn_3_7.ClientError as error:
+            except pysvn._pysvn.ClientError as error:
                 self.report({'WARNING'}, str(error))
                 self.report({'INFO'}, "Maps Colsolidated but not under version control")
         return{'FINISHED'}
@@ -693,7 +832,7 @@ class NAGATO_MT_ProjectFiles(Menu):
         layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
         layout.operator('nagato.get_ref', text= 'get refernce images', icon='IMAGE_REFERENCE')
         layout.separator()
-        layout.operator('nagato.revert', icon='LOOP_BACK')
+        layout.operator('nagato.revert_selected', icon='LOOP_BACK')
         layout.operator('nagato.resolve', icon_value = nagato_icon.icon('resolve_conflict'))
         layout.operator('nagato.clean_up', icon = 'BRUSH_DATA')
 
@@ -704,9 +843,11 @@ classes = [
     OBJECT_OT_NagatoPublish,
     OBJECT_OT_NagatoPublishSelected,
     OBJECT_OT_NagatoUpdate,
+    OBJECT_OT_NagatoUpdateSelected,
     NAGATO_OT_UpdateToRevision,
     Nagato_OT_UpdateAll,
     Nagato_OT_Revert,
+    Nagato_OT_RevertSelected,
     Nagato_OT_Resolve,
     Nagato_OT_CleanUp,
     Nagato_OT_CheckOut,

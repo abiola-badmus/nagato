@@ -1,5 +1,5 @@
 import bpy
-import gazu
+from . import gazu
 import nagato.kitsu
 import nagato.asset_browser
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
@@ -141,13 +141,14 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         col.menu("NAGATO_MT_ProjectFiles", icon="DOWNARROW_HLT", text="")
         col.separator()
         col.operator('nagato.publish_selected', icon_value = nagato_icon.icon('publish_file'), text='')
-        col.operator('nagato.update', icon_value = nagato_icon.icon('update_file'), text='')
+        col.operator('nagato.update_selected', icon_value = nagato_icon.icon('update_file'), text='')
 
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
         layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies') 
         layout.operator('nagato.revision_log', icon= 'LINKED', text= 'revision_log') 
+        layout.operator('nagato.update_to_revision', icon= 'LINKED', text= 'revert to revision') 
         box = layout.box()
         row = box.row()
         row.operator('nagato.lunch_mixer', text= 'Send to Mixer')

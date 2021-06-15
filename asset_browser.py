@@ -1,6 +1,6 @@
 import bpy
 import os
-from gazu.exception import NotAuthenticatedException
+from .gazu.exception import NotAuthenticatedException
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
 from bpy.props import (StringProperty, IntProperty, BoolProperty)
 from nagato.kitsu import NagatoProfile
