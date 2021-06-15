@@ -205,7 +205,7 @@ class NAGATO_OT_AppendSelectedAsset(Operator):
 ######################################### Menu ################################################################################
 class NAGATO_MT_AssetType(Menu):
     bl_label = 'select asset type'
-    bl_idname = "nagato.select_asset_type"
+    bl_idname = "NAGATO_MT_AssetType"
 
     def draw(self, context):
         mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
@@ -221,7 +221,7 @@ class NAGATO_MT_AssetType(Menu):
 
 class NAGATO_MT_AssetFiles(Menu):
     bl_label = 'project files operators'
-    bl_idname = "nagato.asset_files"
+    bl_idname = "NAGATO_MT_AssetFiles"
     
     def draw(self, context):
         layout = self.layout

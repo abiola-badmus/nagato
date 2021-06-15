@@ -482,7 +482,7 @@ class Nagato_OT_CheckOut(Operator):
     bl_description = 'checkout project files'
     
     
-    remote_bool = bpy.props.BoolProperty(
+    remote_bool: bpy.props.BoolProperty(
         name = 'Remote',
         default = False,
         description = 'is host remote'

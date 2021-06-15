@@ -218,7 +218,7 @@ class NAGATO_OT_Login(Operator):
     bl_idname = 'nagato.login'
     bl_description = 'login to kitsu'
 
-    remote_bool = BoolProperty(
+    remote_bool: BoolProperty(
         name = 'Remote',
         default = False,
         description = 'is host url remote'
@@ -428,7 +428,7 @@ class NAGATO_OT_OpenFile(Operator):
     bl_idname = 'nagato.open'
     bl_description = 'opens active selected task file'
 
-    save_bool = bpy.props.BoolProperty()
+    save_bool: bpy.props.BoolProperty()
 
     @classmethod
     def poll(cls, context):
@@ -652,7 +652,7 @@ class NAGATO_OT_UpdateStatus(Operator):
             status_label = 'select status'
         else:
             status_label = current_status[0]
-        row.menu("nagato.select_status", text= status_label)
+        row.menu("NAGATO_MT_StatusList", text= status_label)
         row.prop(self, "comment")
 
     def execute(self, context):
@@ -826,7 +826,7 @@ class NAGATO_OT_Setting(Operator):
 ######################################### Menu ################################################################################
 class NAGATO_MT_StatusList(Menu):
     bl_label = 'select_status'
-    bl_idname = "nagato.select_status"
+    bl_idname = "NAGATO_MT_StatusList"
     
     def draw(self, context):
         for s in status:
@@ -836,7 +836,7 @@ class NAGATO_MT_StatusList(Menu):
 
 class NAGATO_MT_Projects(Menu):
     bl_label = 'select project'
-    bl_idname = "nagato.select_project"
+    bl_idname = "NAGATO_MT_Projects"
     
     def draw(self, context):
         for project in sorted(NagatoProfile.tasks):
@@ -846,7 +846,7 @@ class NAGATO_MT_Projects(Menu):
 
 class NAGATO_MT_FilterTask(Menu):
     bl_label = 'select filter'
-    bl_idname = "nagato.filter_tasks"
+    bl_idname = "NAGATO_MT_FilterTask"
     
     def draw(self, context):
         

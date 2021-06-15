@@ -105,7 +105,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             project_label = nagato.kitsu.NagatoProfile.active_project['name']
         else:
             project_label = 'select project'
-        row.menu("nagato.select_project", text = project_label)
+        row.menu("NAGATO_MT_Projects", text = project_label)
         if nagato.kitsu.NagatoProfile.active_project:
             mount_point = nagato.kitsu.NagatoProfile.active_project['file_tree']['working']['mountpoint'] #context.preferences.addons['nagato'].preferences.project_mount_point
             root = nagato.kitsu.NagatoProfile.active_project['file_tree']['working']['root']
@@ -128,7 +128,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
             filter_label = 'select filter'
         else:
             filter_label = nagato.kitsu.NagatoProfile.active_task_type
-        row.menu("nagato.filter_tasks", text = filter_label)
+        row.menu("NAGATO_MT_FilterTask", text = filter_label)
         
         ######### task list ######################################
         row = layout.row()
@@ -188,7 +188,7 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
             asset_type_label = 'select asset type'
         else:
             asset_type_label = nagato.asset_browser.active_asset_type[0]
-        row.menu("nagato.select_asset_type", text = asset_type_label)
+        row.menu("NAGATO_MT_AssetType", text = asset_type_label)
         
         ######### task list ######################################
         row = layout.row()
@@ -197,7 +197,7 @@ class NAGATO_PT_AssetBrowserPanel(bpy.types.Panel):
         col.operator('nagato.link_asset', icon= 'LINKED', text= '')
         col.operator('nagato.append_asset', icon= 'APPEND_BLEND', text= '')
         col.separator()
-        col.menu('nagato.asset_files', icon="DOWNARROW_HLT", text="")
+        col.menu('NAGATO_MT_AssetFiles', icon="DOWNARROW_HLT", text="")
 
 def act_strip(context):
     try:
@@ -377,7 +377,7 @@ class NagatoGenesis(bpy.types.AddonPreferences):
             else:
                 project_label = 'select project'
 
-            row.menu("nagato.select_project", text = project_label)
+            row.menu("NAGATO_MT_Projects", text = project_label)
             row = layout.row()
             row.alignment = 'LEFT'
             row.operator('nagato.svn_url')
