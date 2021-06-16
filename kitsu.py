@@ -33,7 +33,9 @@ def update_ui_list(displayed_tasks, tasks, active_project, active_task_type):
         #TODO add file svn status
         try:
             file_path = file['full_working_file_path']
-            if os.path.isfile(file_path):
+            if file_path == None:
+                file_status = 'not_existing'
+            elif os.path.isfile(file_path):
                 file_status = str(svn_client.status(file_path)[0].text_status)
             else:
                 file_status = 'not_existing'
