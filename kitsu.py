@@ -158,6 +158,7 @@ class TASKS_UL_list(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             active_task_type = NagatoProfile.active_task_type
             active_task_id = NagatoProfile.lastest_openfile['task_id']
+            active_task_file = NagatoProfile.lastest_openfile['file_path']
             if active_task_type == None:
                 task_icon='BLENDER'
             elif item.task_id == active_task_id:
@@ -504,7 +505,6 @@ class NAGATO_OT_project_open_in_browser(Operator):
     def execute(self, context):
         import webbrowser
         url = gazu.project.get_project_url(NagatoProfile.active_project['id'])
-        print(NagatoProfile.active_project)
         webbrowser.open_new_tab(url)
         self.report({"INFO"}, f"Opened a browser at {url}")
 

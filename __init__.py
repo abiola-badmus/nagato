@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Nagato",
     "author": "Adesada J. Aderemi, Taiwo Folu",
-    "version": (0, 2, 9),
+    "version": (0, 3, 0),
     "blender": (2, 93, 0),
     "location": "View3D > Add > Mesh > New Object",
     "description": "Perform version control commands and project managements",
