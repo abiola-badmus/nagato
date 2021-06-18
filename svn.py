@@ -17,6 +17,7 @@ import nagato.kitsu
 
 ########## operators ################################
 client = pysvn.Client()
+svn_logged_in = True
 
 class OBJECT_OT_NagatoAdd(Operator):
     bl_label = 'Add file to SVN'
@@ -131,7 +132,6 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
         default = 'password',
         description = 'input your svn password'
         )
-    logged_in = True
 
     @classmethod
     def poll(cls, context):
@@ -144,7 +144,7 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
         return status == 1
 
     def draw(self, context):
-        if self.logged_in:
+        if svn_logged_in:
             layout = self.layout
             layout.prop(self, "comment")
         else:
@@ -152,9 +152,9 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
             layout.prop(self, "comment")
             layout.prop(self, "username")
             layout.prop(self, "password")
-
-        
+  
     def invoke(self, context, event):
+        global svn_logged_in
         active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
         active_project_tasks = NagatoProfile.tasks[active_project['name']]
@@ -171,25 +171,15 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
             return{'FINISHED'}
 
         try:
-            client.update(directory)
+            client.ls(client.info(directory).url)
         except pysvn._pysvn.ClientError as e:
             if str(e) == 'callback_get_login required':
-                self.logged_in = False
+                svn_logged_in = False
                 return context.window_manager.invoke_props_dialog(self)
         return context.window_manager.invoke_props_dialog(self)
 
-    @classmethod
-    def poll(cls, context):
-        try:
-            task_list_index = bpy.context.scene.tasks_idx
-            NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]['id']
-            status = 1
-        except:
-            status = 0
-        return status == 1
-
-
     def execute(self, context):
+        global svn_logged_in
         active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
         active_project_tasks = NagatoProfile.tasks[active_project['name']]
@@ -208,8 +198,9 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
         user = NagatoProfile.user['full_name']
         
         try:
-            client.set_default_username(self.username)
-            client.set_default_password(self.password)
+            if svn_logged_in == False:
+                client.set_default_username(self.username)
+                client.set_default_password(self.password)
 
             client.checkin(directory, f'{user} : {self.comment}')
             statuses = client.status(os.path.dirname(directory) + 'maps')
@@ -217,6 +208,7 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
                 if str(status.text_status) in {'modified', 'added'}:
                     map_dir = str(status)[13:-1].replace('\\\\', '/')
                     client.checkin([map_dir[1:-1]], self.comment)
+            svn_logged_in = True
             update_ui_list(
                             displayed_tasks=nagato.kitsu.displayed_tasks,
                             tasks=NagatoProfile.tasks,
@@ -225,6 +217,9 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
                             )
             self.report({'INFO'}, "Publish successful")
         except pysvn._pysvn.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                svn_logged_in = False
+                print(f'svn logged {svn_logged_in} after callback')
             update_ui_list(
                             displayed_tasks=nagato.kitsu.displayed_tasks,
                             tasks=NagatoProfile.tasks,
@@ -355,6 +350,8 @@ class OBJECT_OT_NagatoUpdateSelected(Operator):
 
     def execute(self, context):
         active_project = NagatoProfile.active_project
+        print(active_project)
+        # client.ls()
         task_list_index = bpy.context.scene.tasks_idx
         active_project_tasks = NagatoProfile.tasks[active_project['name']]
         active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
@@ -655,6 +652,18 @@ class Nagato_OT_Resolve(Operator):
     bl_label = 'resolve conflict'
     bl_idname = 'nagato.resolve'
     bl_description = 'resolve file conflict'
+
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
+        )
     
     @classmethod
     def poll(cls, context):
@@ -666,8 +675,16 @@ class Nagato_OT_Resolve(Operator):
             status = 0
         return status == 1
 
+    def draw(self, context):
+        if svn_logged_in:
+            pass
+        else:
+            layout = self.layout
+            layout.prop(self, "username")
+            layout.prop(self, "password")
 
-    def execute(self, context):
+    def invoke(self, context, event):
+        global svn_logged_in
         active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
         active_project_tasks = NagatoProfile.tasks[active_project['name']]
@@ -684,7 +701,37 @@ class Nagato_OT_Resolve(Operator):
             return{'FINISHED'}
 
         try:
+            client.ls(client.info(directory).url)
+        except pysvn._pysvn.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                svn_logged_in = False
+                return context.window_manager.invoke_props_dialog(self)
+        return self.execute(context)
+
+    def execute(self, context):
+        global svn_logged_in
+        active_project = NagatoProfile.active_project
+        task_list_index = bpy.context.scene.tasks_idx
+        active_project_tasks = NagatoProfile.tasks[active_project['name']]
+        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
+        blend_file_path = os.path.expanduser(active_task['working_file_path'])
+        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
+        directory = task_file_directory(task_type, blend_file_path, active_project)
+
+        if directory == 'Project not downloaded':
+            self.report({'WARNING'}, 'Project not downloaded, download project file')
+            return{'FINISHED'}
+        elif directory == 'task file map does not exist':
+            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
+            return{'FINISHED'}
+
+        try:
+            if svn_logged_in == False:
+                client.set_default_username(self.username)
+                client.set_default_password(self.password)
+
             client.resolved(directory)
+            svn_logged_in = True
             update_ui_list(
                             displayed_tasks=nagato.kitsu.displayed_tasks,
                             tasks=NagatoProfile.tasks,
