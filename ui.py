@@ -146,22 +146,45 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
-        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')  
+         
         # mixer buttons
         # box = layout.box()
         # row = box.row()
         # row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
         # row.operator('nagato.import_textures', text= 'Import Mixer Textures') 
         
+        #TODO file and revison info
         ########## task description ####################
+        row = layout.row(align=True)
+        box = row.box()
+        box.label(text= 'created on: ')
+        box.label(text= 'current revision: ')
+        box.label(text= 'last edited by: ')
         try:
-            row = layout.row()
-            box = row.box()
-            box.label(text= 'description:')
-            box.label(text= nagato.kitsu.filtered_todo[task_list_index]['entity_description'])
+            scene = context.scene
+            row = layout.row(align=True)
+            row.alignment = 'LEFT'
+            if scene.show_description:
+                row.prop(scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
+            else:
+                row.prop(scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
+            # row.label(text= 'task description')
+            if scene.show_description:
+                for a in  bpy.context.screen.areas:
+                    if a.type == "PROPERTIES":
+                        wrap_width = a.width/5.93
+                row = layout.row(align=True)
+                box = row.box()
+                import textwrap
+                description = "The textwrap module provides some convenience functions, as well as TextWrapper, the class that does all the work. If you’re just wrapping or filling one or two text strings, the convenience functions should be good enough; otherwise, you should use an instance of TextWrapper for efficiency."
+                wrapped_description = textwrap.wrap(description, wrap_width)
+                for text in wrapped_description:
+                    box.label(text=text)
+                box.label(text= nagato.kitsu.filtered_todo[task_list_index]['entity_description'])
             
         except:
-            pass        
+            pass
+        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')      
         
         ########### update status ######################33
         # row = layout.row()
@@ -411,6 +434,9 @@ def register():
     bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
     bpy.utils.register_class(NAGATO_PT_SequencerPanel)
     bpy.utils.register_class(NagatoGenesis)
+
+    bpy.types.Scene.show_description = bpy.props.BoolProperty(name='description', default=False)
+    bpy.types.Scene.show_history = bpy.props.BoolProperty(name='file history', default=False)
 
     bpy.context.preferences.addons['nagato'].preferences.reset_messages()
 

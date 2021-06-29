@@ -1,3 +1,5 @@
+# from kitsu import task_file_directory
+from gazu import project
 import os
 try:
     import bpy
@@ -62,12 +64,36 @@ class NagatoProfile():
 
         cls.save_profile_data(jsonfile)
 
+    def task_file_directory(task_type: str, blend_file_path: str, project: dict):
+        '''
+            returns the full file path of a task
+        '''
+        try:
+            file_map = project['data']['file_map']
+        except KeyError:
+            file_map = {'shading':'base','concept':'none','modeling':'base','rigging':'base','storyboard':'none','layout':'layout',
+                        'previz':'layout','animation':'anim','lighting':'lighting','fx':'fx','rendering':'lighting','compositing':'comp',}
+        task_type_map = file_map[task_type].lower()
+        if task_type_map == 'base':
+            directory = f'{blend_file_path}.blend'
+            return directory
+        elif task_type_map == 'none':
+            pass
+        else:
+            directory = f'{blend_file_path}_{task_type_map}.blend'
+            return directory
+
     @classmethod
     def refresh_tasks(cls):
         tasks = cls.get_zou_tasks()
         #TODO prebuild file path from genesis
         for task in tasks:
+            project_id = task['project_id']
+            project = gazu.project.get_project(project_id)
+            task_type = task['task_type_name'].lower()
             task['working_file_path'] = gazu.files.build_working_file_path(task['id'])
+            blend_file_path = os.path.expanduser(task['working_file_path'])
+            task['full_working_file_path'] = cls.task_file_directory(task_type, blend_file_path, project)
 
         cls.tasks = cls.structure_task(tasks)
         cls.active_project = None

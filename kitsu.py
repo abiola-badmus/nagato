@@ -43,6 +43,7 @@ def update_ui_list(displayed_tasks, tasks, active_project, active_task_type):
             file_status = 'not_existing'
         NagatoProfile.active_task_type = active_task_type
         if file['task_type_name'] == active_task_type:
+            # print(svn_client.log(file_path))
             if file['sequence_name'] == None:
                 displayed_tasks.append([file['entity_name'], file['task_status_short_name'], file_status, file['id']])
             else:
@@ -205,28 +206,20 @@ class TASKS_UL_list(bpy.types.UIList):
         elif self.layout_type in {'GRID'}:
             pass
 ############## Operators #######################################
-
-class NAGATO_OT_SetLocalHost(Operator):
+class NAGATO_OT_SetHost(Operator):
     bl_label = 'Set Host'
-    bl_idname = 'nagato.set_local_host'
-    bl_description = 'sets host'    
-    
-    def execute(self, context):
-        host = context.preferences.addons['nagato'].preferences.local_host_url
-        gazu.client.set_host(host)
-        self.report({'INFO'}, 'host set to ' + host)
-        return{'FINISHED'}
+    bl_idname = 'nagato.set_host'
+    bl_description = 'sets host'   
 
+    host: StringProperty(
+        name = 'host',
+        default = '',
+        description = 'set kitsu host'
+        )
 
-class NAGATO_OT_SetRemoteHost(Operator):
-    bl_label = 'Set Host'
-    bl_idname = 'nagato.set_remote_host'
-    bl_description = 'sets host'    
-    
     def execute(self, context):
-        host = context.preferences.addons['nagato'].preferences.remote_host_url
-        gazu.client.set_host(host)
-        self.report({'INFO'}, 'host set to ' + host)
+        gazu.client.set_host(self.host)
+        self.report({'INFO'}, 'host set to ' + self.host)
         return{'FINISHED'}
 
         
@@ -268,40 +261,24 @@ class NAGATO_OT_Login(Operator):
         try:
             if self.remote_bool == False:
                 host = context.preferences.addons['nagato'].preferences.local_host_url
-                bpy.ops.nagato.set_local_host()
-                token = gazu.log_in(self.user_name, self.password)
-                NagatoProfile.host = host
-                NagatoProfile.login = token['login']
-                NagatoProfile.user = token['user']
-                NagatoProfile.access_token = token['access_token']
-                NagatoProfile.refresh_token = token['refresh_token']
-                NagatoProfile.ldap = token['ldap']
-                NagatoProfile.save_json()
-                svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
-                if os.path.isdir(svn_auth_folder):
-                    filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
-                    for auth_file in filelist:
-                        file_path = os.path.join(svn_auth_folder, auth_file)
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
             else:
                 host = context.preferences.addons['nagato'].preferences.remote_host_url
-                bpy.ops.nagato.set_remote_host()
-                token = gazu.log_in(self.user_name, self.password)
-                NagatoProfile.host = host
-                NagatoProfile.login = token['login']
-                NagatoProfile.user = token['user']
-                NagatoProfile.access_token = token['access_token']
-                NagatoProfile.refresh_token = token['refresh_token']
-                NagatoProfile.ldap = token['ldap']
-                NagatoProfile.save_json()
-                svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
-                if os.path.isdir(svn_auth_folder):
-                    filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
-                    for auth_file in filelist:
-                        file_path = os.path.join(svn_auth_folder, auth_file)
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
+            bpy.ops.nagato.set_host(host=host)
+            token = gazu.log_in(self.user_name, self.password)
+            NagatoProfile.host = host
+            NagatoProfile.login = token['login']
+            NagatoProfile.user = token['user']
+            NagatoProfile.access_token = token['access_token']
+            NagatoProfile.refresh_token = token['refresh_token']
+            NagatoProfile.ldap = token['ldap']
+            NagatoProfile.save_json()
+            svn_auth_folder = f'{os.getenv("APPDATA")}/Subversion/auth/svn.simple'
+            if os.path.isdir(svn_auth_folder):
+                filelist = [ auth_file for auth_file in os.listdir(svn_auth_folder) ]
+                for auth_file in filelist:
+                    file_path = os.path.join(svn_auth_folder, auth_file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
 
             displayed_tasks.clear()
             bpy.ops.nagato.refresh()
@@ -388,22 +365,7 @@ class NAGATO_OT_Projects(Operator):
     
     def execute(self, context):
         NagatoProfile.active_project = gazu.project.get_project_by_name(self.project)
-        project_tasks = NagatoProfile.tasks[NagatoProfile.active_project['name']]
         NagatoProfile.active_task_type = None
-        task_types = project_tasks.keys()
-        for task_type in task_types:
-            tasks_by_type = project_tasks[task_type]
-            for task in tasks_by_type:
-                blend_file_path = os.path.expanduser(task['working_file_path'])
-                task['full_working_file_path'] = task_file_directory(task_type, blend_file_path, NagatoProfile.active_project)
-                
-        # if not os.path.isdir(project_folder):
-        #     self.report({'WARNING'}, 'Project not downloaded, download project file')
-        # if not os.path.isfile(file_map_dir):
-        #     self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
-
-
-        # scene = context.scene
         displayed_tasks.clear()
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list) 
@@ -660,8 +622,8 @@ class NAGATO_OT_UpdateStatus(Operator):
             task_list_index = bpy.context.scene.tasks_idx
             task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
             gazu.task.add_comment(task['id'], status_name[0], self.comment)
-            if status_name[0]['short_name'] == 'wfa':
-                bpy.ops.nagato.publish()
+            # if status_name[0]['short_name'] == 'wfa':
+            #     bpy.ops.nagato.publish()
             displayed_tasks[task_list_index][1] = status_name[0]['short_name']
             task['task_status_short_name'] = status_name[0]['short_name']
             bpy.context.scene.update_tag()
@@ -856,8 +818,7 @@ class NAGATO_MT_FilterTask(Menu):
 ############### all classes ####################    
 classes = [
         #NagatoSetHost,
-        NAGATO_OT_SetLocalHost,
-        NAGATO_OT_SetRemoteHost,
+        NAGATO_OT_SetHost,
         NAGATO_OT_Login,
         NAGATO_OT_Logout,
         NAGATO_OT_Refresh,
