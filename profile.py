@@ -1,5 +1,4 @@
 # from kitsu import task_file_directory
-from gazu import project
 import os
 try:
     import bpy
