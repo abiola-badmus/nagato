@@ -18,6 +18,7 @@ import nagato.kitsu
 ########## operators ################################
 client = pysvn.Client()
 svn_logged_in = True
+revisions_list = list()
 
 class OBJECT_OT_NagatoAdd(Operator):
     bl_label = 'Add file to SVN'
@@ -43,74 +44,6 @@ class OBJECT_OT_NagatoAdd(Operator):
         return{'FINISHED'}
         
 
-class OBJECT_OT_NagatoPublish(Operator):
-    bl_label = 'Publish file'
-    bl_idname = 'nagato.publish'
-    bl_description = 'Publish current open file to project repository'
-    
-    comment: StringProperty(
-        name = 'comment',
-        default = 'file published',
-        description = 'comment for publishing'
-        )
-    username: StringProperty(
-        name = 'Username',
-        default = 'username',
-        description = 'input svn username'
-        )
-    password: StringProperty(
-        subtype = 'PASSWORD',
-        name = 'Password',
-        default = 'password',
-        description = 'input your svn password'
-        )
-    logged_in = True
-
-    def draw(self, context):
-        if self.logged_in:
-            layout = self.layout
-            layout.prop(self, "comment")
-        else:
-            layout = self.layout
-            layout.prop(self, "comment")
-            layout.prop(self, "username")
-            layout.prop(self, "password")
-
-        
-    def invoke(self, context, event):
-        try:
-            client.update(f'{bpy.context.blend_data.filepath}')
-        except pysvn._pysvn.ClientError as e:
-            if str(e) == 'callback_get_login required':
-                self.logged_in = False
-                return context.window_manager.invoke_props_dialog(self)
-        return context.window_manager.invoke_props_dialog(self)
-
-    @classmethod
-    def poll(cls, context):
-        return bool(NagatoProfile.user) and bpy.data.is_saved == True
-
-
-    def execute(self, context):
-        bpy.ops.wm.save_mainfile()
-        user = NagatoProfile.user['full_name']
-        
-        try:
-            client.set_default_username(self.username)
-            client.set_default_password(self.password)
-
-            client.checkin([f'{bpy.context.blend_data.filepath}'], f'{user} : {self.comment}')
-            statuses = client.status(bpy.path.abspath('//') + 'maps')
-            for status in statuses:
-                if str(status.text_status) in {'modified', 'added'}:
-                    map_dir = str(status)[13:-1].replace('\\\\', '/')
-                    client.checkin([map_dir[1:-1]], self.comment)
-            self.report({'INFO'}, "Publish successful")
-        except pysvn._pysvn.ClientError as e:
-            self.report({'WARNING'}, str(e))
-        return{'FINISHED'}
-
-
 class OBJECT_OT_NagatoPublishSelected(Operator):
     bl_label = 'Publish selected file'
     bl_idname = 'nagato.publish_selected'
@@ -118,7 +51,7 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
     
     comment: StringProperty(
         name = 'comment',
-        default = 'file published',
+        default = '',
         description = 'comment for publishing'
         )
     username: StringProperty(
@@ -147,9 +80,23 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
     def draw(self, context):
         if svn_logged_in:
             layout = self.layout
+            if self.comment == '':
+                layout.alert = True
+                layout.label(text = 'you have to write a comment')
+                if self.comment == '':
+                    layout.alert = True
+                else:
+                    layout.alert = False
             layout.prop(self, "comment")
         else:
             layout = self.layout
+            if self.comment == '':
+                layout.alert = True
+                layout.label(text = 'you have to write a comment')
+                if self.comment == '':
+                    layout.alert = True
+                else:
+                    layout.alert = False
             layout.prop(self, "comment")
             layout.prop(self, "username")
             layout.prop(self, "password")
@@ -190,9 +137,12 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
             if svn_logged_in == False:
                 client.set_default_username(self.username)
                 client.set_default_password(self.password)
+            if self.comment == '':
+                self.report({'WARNING'}, 'Publish failed, no comment added')
+                return{'FINISHED'}
             if NagatoProfile.lastest_openfile['file_path'] == bpy.context.blend_data.filepath:
                 bpy.ops.wm.save_mainfile()
-            client.checkin(directory, f'{user} : {self.comment}')
+            client.checkin(directory, f'{self.comment}')
             statuses = client.status(os.path.dirname(directory) + 'maps')
             for status in statuses:
                 if str(status.text_status) in {'modified', 'added'}:
@@ -219,56 +169,6 @@ class OBJECT_OT_NagatoPublishSelected(Operator):
         bpy.context.scene.update_tag()
         bpy.app.handlers.depsgraph_update_pre.append(update_list)
 
-        return{'FINISHED'}
-
-    
-class OBJECT_OT_NagatoUpdate(Operator):
-    bl_label = 'Update file'
-    bl_idname = 'nagato.update'
-    bl_description = 'Update current open file from project repository'
-
-    username: StringProperty(
-        name = 'Username',
-        default = 'username',
-        description = 'input svn username'
-        )
-
-    password: StringProperty(
-        subtype = 'PASSWORD',
-        name = 'Password',
-        default = 'password',
-        description = 'input your svn password'
-        )
-        
-    def invoke(self, context, event):
-        try:
-            client.update(f'{bpy.context.blend_data.filepath}')
-            client.update(bpy.path.abspath('//') + 'maps')
-            bpy.ops.wm.revert_mainfile()
-            self.report({'INFO'}, "Update Successful")
-            return{'FINISHED'}
-        except pysvn._pysvn.ClientError as e:
-            if str(e) == 'callback_get_login required':
-                return context.window_manager.invoke_props_dialog(self)
-            self.report({'WARNING'}, str(e))
-            return{'FINISHED'}
-    
-    @classmethod
-    def poll(cls, context):
-        return bool(NagatoProfile.user) and bpy.data.is_saved == True
-
-
-    def execute(self, context):
-        try:
-            client.set_default_username(self.username)
-            client.set_default_password(self.password)
-
-            client.update(f'{bpy.context.blend_data.filepath}')
-            client.update(bpy.path.abspath('//') + 'maps')
-            bpy.ops.wm.revert_mainfile()
-            self.report({'INFO'}, "Update Successful")
-        except pysvn._pysvn.ClientError as err:
-            self.report({'WARNING'}, str(err))
         return{'FINISHED'}
 
 
@@ -367,12 +267,6 @@ class NAGATO_OT_UpdateToRevision(Operator):
     bl_idname = 'nagato.update_to_revision'
     bl_description = 'revert to revision'
 
-    revision: IntProperty(
-        name = 'revision',
-        default = 0,
-        description = 'revision to revert to'
-        )
-
     @classmethod
     def poll(cls, context):
         try:
@@ -398,10 +292,10 @@ class NAGATO_OT_UpdateToRevision(Operator):
             return{'FINISHED'}
 
         try:
-            logs = client.log(directory)
-            logs.reverse()
-            revision = logs[self.revision]
-            roll_back_file= client.cat(directory, revision.revision)
+            # logs = client.log(directory)
+            # logs.reverse()
+            revision = revisions_list[context.scene.revisions_idx]
+            roll_back_file= client.cat(directory, revision)
             with open(directory, 'w+b') as f:
                 f.write(roll_back_file)
             if NagatoProfile.lastest_openfile['file_path'] == bpy.context.blend_data.filepath:
@@ -420,152 +314,99 @@ class NAGATO_OT_UpdateToRevision(Operator):
             self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
-#TODO design get revision log
-revision_options = []
+
 class NAGATO_OT_RevisionLog(Operator):
-    bl_label = 'revision_log'
+    bl_label = 'verson history'
     bl_idname = 'nagato.revision_log'
-    bl_description = 'revision_log'
-  
-    # revisions_options = []
+    bl_description = 'verson history'
 
-    def item_callback(self, context):
-        return revision_options
-
-    revisions: EnumProperty(
-        name="revisions",
-        default=0,
-        items = item_callback
+    username: StringProperty(
+        name = 'Username',
+        default = 'username',
+        description = 'input svn username'
+        )
+    password: StringProperty(
+        subtype = 'PASSWORD',
+        name = 'Password',
+        default = 'password',
+        description = 'input your svn password'
         )
 
-
-
-    # @classmethod
-    # def poll(cls, context):
-    #     return bool(NagatoProfile.user) and bool(NagatoProfile.active_project) and NagatoProfile.user['role'] == 'admin'
+    @classmethod
+    def poll(cls, context):
+        try:
+            task_list_index = bpy.context.scene.tasks_idx
+            NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]['id']
+            status = 1
+        except:
+            status = 0
+        return status == 1
 
     def invoke(self, context, event):
+        global svn_logged_in
         active_project = NagatoProfile.active_project
         task_list_index = bpy.context.scene.tasks_idx
         active_project_tasks = NagatoProfile.tasks[active_project['name']]
         active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
-        blend_file_path = os.path.expanduser(active_task['working_file_path'])
-        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        directory = task_file_directory(task_type, blend_file_path, active_project) 
-        print('directoryxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+        directory = active_task['full_working_file_path']
+        if not os.path.isfile(directory):
+            self.report({'WARNING'}, 'file deos not exist yet, pls download project file or update project')
+            return{'FINISHED'}
+
+        try:
+            client.ls(client.info(directory).url)
+        except pysvn._pysvn.ClientError as e:
+            if str(e) == 'callback_get_login required':
+                svn_logged_in = False
+                return context.window_manager.invoke_props_dialog(self)
+
         logs = client.log(directory)
-        print(logs)
-        revision_options.clear()
         logs.reverse()
-        for i, log in enumerate(logs, 1):
-            rev = str(log.revision.number)
-            message = log.message
-            revision_options.append((str(i), str(i), message, i))
-        print(revision_options)
+        formatted_log  = list()
+        revisions_list.clear()
+        for i, log in enumerate(logs, 0):
+            from datetime import datetime
+            date = datetime.fromtimestamp(log.date).strftime('%Y-%m-%d')
+            revisions_list.append(log.revision)
+            formatted_log.append([str(i), log.message, log.author, str(date)])
+
+        try:
+            context.scene.revisions.clear()
+        except:
+            pass
+        for i, (revision, message, author, date) in enumerate(formatted_log, 0): 
+            colection = context.scene.revisions.add()   
+            colection.revision = revision
+            colection.message = message 
+            colection.author = author
+            colection.date = date
+            colection.revisions_idx = i
         return context.window_manager.invoke_props_dialog(self)
     
     def draw(self, context):
-        task_list_index = bpy.context.scene.tasks_idx
-        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"] #filtered_todo[task_list_index]['task_type_name']
-        entity_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"] # filtered_todo[task_list_index]['entity_name']
-        entity_sq_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"]# filtered_todo[task_list_index]['sequence_name']
+        if svn_logged_in:
+            revisions_list_index = context.scene.revisions_idx
+            revision = context.scene.revisions[revisions_list_index]
 
-        if task_type == 'lighting':
-            if entity_sq_name == None:
-                file_name = entity_name + '_lighting.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_lighting.blend'
-        elif task_type == 'rendering':
-            if entity_sq_name == None:
-                file_name = entity_name + '_lighting.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_lighting.blend'
-        elif task_type == 'previz':
-            if entity_sq_name == None:
-                file_name = entity_name + '_layout.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_layout.blend'
-        elif task_type == 'layout':
-            if entity_sq_name == None:
-                file_name = entity_name + '_layout.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_layout.blend'
-        elif task_type == 'anim':
-            if entity_sq_name == None:
-                file_name = entity_name + '_anim.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_anim.blend'
+            row = self.layout
+            row.label(text ='No.' + ' '*10 + 'User' +' '*30 +'Date Published')
+            row.template_list("Revision_UL_list", "", context.scene, "revisions", context.scene, "revisions_idx", rows=6)
+
+            row.label(text = f'{revision["message"]}')
+            row.operator('nagato.update_to_revision')
         else:
-            file_name = entity_name + '.blend'
-        
-        active_project = NagatoProfile.active_project
-        task_list_index = bpy.context.scene.tasks_idx
-        active_project_tasks = NagatoProfile.tasks[active_project['name']]
-        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
-        blend_file_path = os.path.expanduser(active_task['working_file_path'])
-        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        directory = task_file_directory(task_type, blend_file_path, active_project) 
-        logs = client.log(directory)
-        # for i, log in enumerate(logs, 0):
-        #     rev = str(log.revision.number)
-        #     message = log.message
-        #     self.revision_options.append((rev, rev, message, i))
-
-        logs.reverse()
-        current_rev = logs[-1].revision.number
-        date_modified = logs[-1].revision.date
-        commit_msg = logs[-1].message
-
-        
-
-        row = self.layout
-        row.prop(self, "revisions")
-        row.label(text = 'FILE:  ' + file_name)
-        row.label(text = f'current revision: {current_rev}')
-        row.label(text = f'date modified: {date_modified}')
-        row.label(text = f'commit message: {commit_msg}')
+            layout = self.layout
+            layout.alert = True
+            layout.label(text = 'pls log in and try checking log again')
+            layout.alert = False
+            layout.prop(self, "username")
+            layout.prop(self, "password")
 
     def execute(self, context):
-        active_project = NagatoProfile.active_project
-        task_list_index = bpy.context.scene.tasks_idx
-        active_project_tasks = NagatoProfile.tasks[active_project['name']]
-        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
-        blend_file_path = os.path.expanduser(active_task['working_file_path'])
-        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        directory = task_file_directory(task_type, blend_file_path, active_project)
-
-        if directory == 'Project not downloaded':
-            self.report({'WARNING'}, 'Project not downloaded, download project file')
-            return{'FINISHED'}
-        elif directory == 'task file map does not exist':
-            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
-            return{'FINISHED'}
-
-        if bpy.data.texts.get('version log'):
-            log_text = bpy.data.texts.get('version log')
-            log_text.clear()
-        else:
-            log_text = bpy.data.texts.new('version log')
-
-        bpy.data.texts['version log'].write('##############log##############')
-        logs = client.log(directory)
-        logs.reverse()
-
-        for i, log in enumerate(logs, 0):
-            log_text.write(f"\nrev={i}, date={log.revision.date}, msg={log.message}")
-        bpy.data.texts['version log'].write('\n##############log end##############')
-
-        bpy.ops.screen.userpref_show("INVOKE_DEFAULT")
-        # Change area type
-        area = bpy.context.window_manager.windows[-1].screen.areas[0]
-        area.type = "TEXT_EDITOR"
-        
-        for area in bpy.context.screen.areas:
-            if area.type == 'TEXT_EDITOR':
-                area.spaces[0].text = log_text # make loaded text file visible
+        if svn_logged_in == False:
+                client.set_default_username(self.username)
+                client.set_default_password(self.password)
+                svn_logged_in == True
         return{'FINISHED'}
 
 
@@ -600,7 +441,13 @@ class Nagato_OT_UpdateAll(Operator):
                         return context.window_manager.invoke_props_dialog(self)
                     self.report({'WARNING'}, str(error))
             if bpy.data.is_saved:
-                        bpy.ops.wm.revert_mainfile()
+                bpy.ops.wm.revert_mainfile()
+            update_ui_list(
+                displayed_tasks=nagato.kitsu.displayed_tasks,
+                tasks=NagatoProfile.tasks,
+                active_project=NagatoProfile.active_project['name'],
+                active_task_type=NagatoProfile.active_task_type
+                )
             self.report({'INFO'}, "Update Successful")
         except FileNotFoundError:
             self.report({'WARNING'}, 'project files do not exist')
@@ -623,46 +470,17 @@ class Nagato_OT_UpdateAll(Operator):
                     client.update(os.path.join(project_folder, file))
                     if bpy.data.is_saved:
                         bpy.ops.wm.revert_mainfile()
+                    update_ui_list(
+                        displayed_tasks=nagato.kitsu.displayed_tasks,
+                        tasks=NagatoProfile.tasks,
+                        active_project=NagatoProfile.active_project['name'],
+                        active_task_type=NagatoProfile.active_task_type
+                        )
                     self.report({'INFO'}, "Update Successful")
                 except pysvn._pysvn.ClientError as error:
                     self.report({'WARNING'}, str(error))
         except FileNotFoundError:
             self.report({'WARNING'}, 'project files do not exist')
-        return{'FINISHED'}
-
-
-class Nagato_OT_Revert(Operator):
-    bl_label = 'reset file'
-    bl_idname = 'nagato.revert'
-    bl_description = 'revert to last checkpoint'
-    
-    @classmethod
-    def poll(cls, context):
-        return bool(NagatoProfile.user) and bpy.data.is_saved == True
-
-
-    def execute(self, context):
-        active_project = NagatoProfile.active_project
-        task_list_index = bpy.context.scene.tasks_idx
-        active_project_tasks = NagatoProfile.tasks[active_project['name']]
-        active_task = active_project_tasks[NagatoProfile.active_task_type][task_list_index]
-        blend_file_path = os.path.expanduser(active_task['working_file_path'])
-        task_type = active_project_tasks[NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        directory = task_file_directory(task_type, blend_file_path, active_project)
-
-        if directory == 'Project not downloaded':
-            self.report({'WARNING'}, 'Project not downloaded, download project file')
-            return{'FINISHED'}
-        elif directory == 'task file map does not exist':
-            self.report({'WARNING'}, 'task file map does not exist in <project folder>/.conf/filemap')
-            return{'FINISHED'}
-
-        try:
-            client.revert(directory)
-            bpy.ops.wm.revert_mainfile()
-            self.report({'INFO'}, "reverted")
-        except pysvn._pysvn.ClientError as e:
-            self.report({'WARNING'}, str(e))
         return{'FINISHED'}
 
 
@@ -1029,17 +847,19 @@ class NAGATO_MT_ProjectFiles(Menu):
     
     def draw(self, context):
         layout = self.layout
-        layout.operator('nagato.add', icon = 'ADD')
+        # layout.operator('nagato.add', icon = 'ADD')
         # layout.separator()
         # layout.operator('nagato.update_all', text= 'update all files')
         # layout.operator('nagato.check_out', text= 'download project files')
+        # layout.separator()
+        # layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
+        # TODO get reference images and send image to kitsu
+        # FIX Consolidate maps
+        # layout.operator('nagato.get_ref', text= 'get refernce images', icon='IMAGE_REFERENCE')
         layout.separator()
-        layout.operator('nagato.consolidate', text= 'consolidate maps', icon = 'FULLSCREEN_EXIT')
-        layout.operator('nagato.get_ref', text= 'get refernce images', icon='IMAGE_REFERENCE')
-        layout.separator()
-        layout.operator('nagato.revision_log', icon='FILE_TEXT')
+        # layout.operator('nagato.revision_log', icon='FILE_TEXT')
         layout.operator('nagato.revert_selected', icon='LOOP_BACK')
-        layout.operator('nagato.update_to_revision')
+        # layout.operator('nagato.update_to_revision')
         layout.operator('nagato.resolve', icon_value = nagato_icon.icon('resolve_conflict'))
         layout.operator('nagato.clean_up', icon = 'BRUSH_DATA')
 

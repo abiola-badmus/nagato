@@ -132,7 +132,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         
         ######### task list ######################################
         row = layout.row()
-        row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=6)
+        row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=7)
         col = row.column()
         col.operator("nagato.open", icon_value = nagato_icon.icon('open_file'), text="")
         col.enabled = text == "Task file"
@@ -142,49 +142,45 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         col.separator()
         col.operator('nagato.publish_selected', icon_value = nagato_icon.icon('publish_file'), text='')
         col.operator('nagato.update_selected', icon_value = nagato_icon.icon('update_file'), text='')
+        col.operator('nagato.revision_log', icon_value = nagato_icon.icon('version_history'), text='')
 
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
          
-        # mixer buttons
-        # box = layout.box()
-        # row = box.row()
-        # row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
-        # row.operator('nagato.import_textures', text= 'Import Mixer Textures') 
-        
         #TODO file and revison info
         ########## task description ####################
+        scene = context.scene
         row = layout.row(align=True)
-        box = row.box()
-        box.label(text= 'created on: ')
-        box.label(text= 'current revision: ')
-        box.label(text= 'last edited by: ')
-        try:
-            scene = context.scene
+        row.alignment = 'LEFT'
+        if scene.show_description:
+            row.prop(scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
+        else:
+            row.prop(scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
+        if scene.show_description:
+            for a in  bpy.context.screen.areas:
+                if a.type == "PROPERTIES":
+                    wrap_width = a.width/5.93
             row = layout.row(align=True)
-            row.alignment = 'LEFT'
-            if scene.show_description:
-                row.prop(scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
-            else:
-                row.prop(scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
-            # row.label(text= 'task description')
-            if scene.show_description:
-                for a in  bpy.context.screen.areas:
-                    if a.type == "PROPERTIES":
-                        wrap_width = a.width/5.93
-                row = layout.row(align=True)
-                box = row.box()
-                import textwrap
-                description = "The textwrap module provides some convenience functions, as well as TextWrapper, the class that does all the work. If you’re just wrapping or filling one or two text strings, the convenience functions should be good enough; otherwise, you should use an instance of TextWrapper for efficiency."
-                wrapped_description = textwrap.wrap(description, wrap_width)
-                for text in wrapped_description:
-                    box.label(text=text)
-                box.label(text= nagato.kitsu.filtered_todo[task_list_index]['entity_description'])
-            
-        except:
-            pass
-        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')      
+            box = row.box()
+            import textwrap
+            try:
+                active_project = nagato.kitsu.NagatoProfile.active_project['name']
+                active_task_type = nagato.kitsu.NagatoProfile.active_task_type
+                description = nagato.kitsu.NagatoProfile.tasks[active_project][active_task_type][task_list_index]['entity_description']
+            except (TypeError, KeyError):
+                description = 'None'
+            wrapped_description = textwrap.wrap(description, wrap_width)
+            for text in wrapped_description:
+                box.label(text=text)
+                
+        layout.separator_spacer()
+        layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')
+        # mixer buttons
+        box = layout.box()
+        row = box.row()
+        row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
+        row.operator('nagato.import_textures', text= 'Import Mixer Textures')
         
         ########### update status ######################33
         # row = layout.row()
@@ -275,6 +271,25 @@ class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
         col.operator('nagato.submit_shots_to_kitsu', text= 'Submit Selected Shots to Kitsu')
         col.operator('nagato.project_open_in_browser', icon= 'WORLD', text= 'Open Project in Browser')
                
+
+############################ Property groups #####################################################
+class Revision(PropertyGroup):
+    revision: StringProperty()
+    message: StringProperty()
+    author: StringProperty()
+    date: StringProperty()
+
+#################### mapping lists into column #################################
+class Revision_UL_list(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            split = layout.split(factor= 0.1, align=True)
+            split.label(text = item.revision)
+            split.label(text = item.author)
+            # split.label(text = item.message)
+            split.label(text = item.date)
+        elif self.layout_type in {'GRID'}:
+            pass
 
 
 #####preferences###################################
@@ -428,21 +443,25 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 
 
 # registration
+classes = [
+    Revision,
+    Revision_UL_list,
+    NAGATO_PT_TaskManagementPanel,
+    NAGATO_PT_AssetBrowserPanel,
+    NAGATO_PT_SequencerPanel,
+    NagatoGenesis,
+]
 def register():
-    bpy.utils.register_class(NAGATO_PT_TaskManagementPanel)
-    # bpy.utils.register_class(NAGATO_PT_VersionControlPanel)
-    bpy.utils.register_class(NAGATO_PT_AssetBrowserPanel)
-    bpy.utils.register_class(NAGATO_PT_SequencerPanel)
-    bpy.utils.register_class(NagatoGenesis)
-
+    for cls in classes:
+        bpy.utils.register_class(cls)
     bpy.types.Scene.show_description = bpy.props.BoolProperty(name='description', default=False)
     bpy.types.Scene.show_history = bpy.props.BoolProperty(name='file history', default=False)
 
-    bpy.context.preferences.addons['nagato'].preferences.reset_messages()
+    bpy.types.Scene.revisions = bpy.props.CollectionProperty(type=Revision)
+    bpy.types.Scene.revisions_idx = bpy.props.IntProperty(default=0)
+
+    bpy.context.preferences.addons['nagato'].preferences.reset_messages()   
 
 def unregister():
-    bpy.utils.unregister_class(NAGATO_PT_TaskManagementPanel)
-    # bpy.utils.unregister_class(NAGATO_PT_VersionControlPanel)
-    bpy.utils.unregister_class(NAGATO_PT_AssetBrowserPanel)
-    bpy.utils.unregister_class(NAGATO_PT_SequencerPanel)
-    bpy.utils.unregister_class(NagatoGenesis)
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)  

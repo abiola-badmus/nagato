@@ -43,7 +43,8 @@ def update_ui_list(displayed_tasks, tasks, active_project, active_task_type):
             file_status = 'not_existing'
         NagatoProfile.active_task_type = active_task_type
         if file['task_type_name'] == active_task_type:
-            # print(svn_client.log(file_path))
+            # print(svn_client.log(file_
+            # path))
             if file['sequence_name'] == None:
                 displayed_tasks.append([file['entity_name'], file['task_status_short_name'], file_status, file['id']])
             else:
@@ -770,6 +771,7 @@ class NAGATO_OT_GetDependencies(Operator):
                     scene['file_dependecies'][asset_name] = path    
         self.report({'INFO'}, 'dependency updated')
         return{'FINISHED'}
+
 
 class NAGATO_OT_Setting(Operator):
     bl_label = 'setting'
