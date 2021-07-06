@@ -366,7 +366,7 @@ class NAGATO_OT_RevisionLog(Operator):
         revisions_list.clear()
         for i, log in enumerate(logs, 0):
             from datetime import datetime
-            date = datetime.fromtimestamp(log.date).strftime('%Y-%m-%d')
+            date = datetime.fromtimestamp(log.date).strftime('%d-%m-%Y')
             revisions_list.append(log.revision)
             formatted_log.append([str(i), log.message, log.author, str(date)])
 

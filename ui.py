@@ -168,7 +168,7 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
                 active_project = nagato.kitsu.NagatoProfile.active_project['name']
                 active_task_type = nagato.kitsu.NagatoProfile.active_task_type
                 description = nagato.kitsu.NagatoProfile.tasks[active_project][active_task_type][task_list_index]['entity_description']
-            except (TypeError, KeyError):
+            except (TypeError, KeyError, IndexError):
                 description = 'None'
             wrapped_description = textwrap.wrap(description, wrap_width)
             for text in wrapped_description:

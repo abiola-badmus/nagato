@@ -1,4 +1,4 @@
-from typing import Sequence
+# from typing import Sequence
 import bpy
 import os
 import time
@@ -8,7 +8,7 @@ from . import profile
 from .gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty, BoolProperty)
+from bpy.props import (StringProperty, IntProperty, BoolProperty, EnumProperty)
 from bpy.app.handlers import persistent
 from configparser import ConfigParser, NoOptionError
 import shutil
@@ -556,6 +556,22 @@ class NAGATO_OT_UpdateStatus(Operator):
         description = 'type your comment'
         )
 
+    preview_path: StringProperty(
+        name = 'add preview',
+        default = '',
+        description = 'path to preview file'
+        )
+
+    render_type: EnumProperty(
+        items={
+            ('opengl', 'opengl', 'render with opengl'),
+            ('full', 'full', 'render full image'),
+            ('50%', '50%', r'render 50% of image')},
+        default='opengl',
+        name= "Render type",
+        description="choose a render type",
+        )
+
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -616,13 +632,22 @@ class NAGATO_OT_UpdateStatus(Operator):
             status_label = current_status[0]
         row.menu("NAGATO_MT_StatusList", text= status_label)
         row.prop(self, "comment")
+        row.prop(self, "preview_path")
+        row.prop(self, "render_type")
 
     def execute(self, context):
         # scene = context.scene
         try:
             task_list_index = bpy.context.scene.tasks_idx
             task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
-            gazu.task.add_comment(task['id'], status_name[0], self.comment)
+            if self.preview_path == '':
+                gazu.task.add_comment(task['id'], status_name[0], self.comment)
+            elif os.path.isfile(self.preview_path):
+                comment = gazu.task.add_comment(task['id'], status_name[0], self.comment, attachments=[self.preview_path])
+                gazu.task.add_preview(task['id'], comment, self.preview_path)
+            else:
+                self.report({'WARNING'}, "preview file do not exist")
+                return{'FINISHED'}
             # if status_name[0]['short_name'] == 'wfa':
             #     bpy.ops.nagato.publish()
             displayed_tasks[task_list_index][1] = status_name[0]['short_name']
