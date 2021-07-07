@@ -207,6 +207,24 @@ class TASKS_UL_list(bpy.types.UIList):
                 split.label(text = '', icon_value = nagato_icon.icon('DeletedIcon'))
         elif self.layout_type in {'GRID'}:
             pass
+
+    def filter_items(self, context, data, propname):
+        items = getattr(data, propname)
+        # print('csdffffffffffffffffffff', items)
+        filtered = []
+        ordered = []
+
+        filtered = [self.bitflag_filter_item] * len(items)
+        # for i in items:
+        #     print(i.tasks)
+        helpers = bpy.types.UI_UL_list
+        filtered = helpers.filter_items_by_name(
+            self.filter_name, 
+            self.bitflag_filter_item, 
+            items, "tasks", reverse=False
+            )
+        # filtered[0] &= ~self.bitflag_filter_item
+        return filtered, ordered
 ############## Operators #######################################
 class NAGATO_OT_SetHost(Operator):
     bl_label = 'Set Host'
