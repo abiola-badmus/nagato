@@ -15,15 +15,16 @@ import shutil
 import re
 from . import pysvn
 from . import nagato_icon
+import tempfile
 svn_client = pysvn.Client()
 
 NagatoProfile = profile.NagatoProfile
 # time_queue = [0, 3]
 
 displayed_tasks = []
-status = ['wip', 'todo', 'wfa']
-status_name = []
-current_status = []
+# status = ['wip', 'todo', 'wfa']
+# status_name = []
+# current_status = []
 
 
 ########################### FUNCTIONS ################################ 
@@ -523,32 +524,11 @@ class NAGATO_OT_Submit_shot_to_kitsu(Operator):
         return {"FINISHED"}
 
 
-class NAGATO_OT_SetStatus(Operator):
-    bl_label = 'status'
-    bl_idname = 'nagato.setstatus'
-    bl_description = 'opens active selected task'
-
-    stat: StringProperty(default='')
-    
-    def execute(self, context):
-        current_status.clear()
-        status_name.clear()
-        gazu.task.get_task_status_by_short_name(self.stat)
-        s = gazu.task.get_task_status_by_short_name(self.stat)
-        status_name.append(s)
-        # task_list_index = bpy.context.scene.tasks_idx
-        # filtered_todo[task_list_index]['id']
-        current_status.append(s['short_name'])
-        self.report({'INFO'}, 'Status: ' + self.stat)
-        return{'FINISHED'}
-
-
 class NAGATO_OT_UpdateStatus(Operator):
+    #TODO add sending preview and attactments to kitsu
     bl_label = 'update status'
     bl_idname = 'nagato.update_status'
     bl_description = 'update status'
-
-
 
     comment: StringProperty(
         name = 'comment',
@@ -571,6 +551,20 @@ class NAGATO_OT_UpdateStatus(Operator):
         name= "Render type",
         description="choose a render type",
         )
+    status: EnumProperty(
+        items={
+            ('todo', 'todo', 'set task status to todo'),
+            ('wip', 'wip', 'set task status to work in progress'),
+            ('wfa', 'wfa', 'set task status to waiting for approver')},
+        default='wip',
+        name= "Task status",
+        description="update task status",
+        )
+    render_preview: BoolProperty(
+        name = 'Render Preview',
+        default = False,
+        description = 'send render preview of opened task'
+    )
 
 
     def invoke(self, context, event):
@@ -578,80 +572,51 @@ class NAGATO_OT_UpdateStatus(Operator):
     
     def draw(self, context):
         task_list_index = bpy.context.scene.tasks_idx
-        task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"] #filtered_todo[task_list_index]['task_type_name']
-        entity_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"] # filtered_todo[task_list_index]['entity_name']
-        entity_sq_name = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type]\
-            [task_list_index]["entity_name"]# filtered_todo[task_list_index]['sequence_name']
-        
-        # if entity_name['sequence_name'] == None:
-        #     displayed_tasks.append(file['entity_name'])
-        # else:
-        #     displayed_tasks.append(file['sequence_name'] + '_' + file['entity_name'])
-        #     filtered_todo.append(file)
-
-        if task_type == 'lighting':
-            if entity_sq_name == None:
-                file_name = entity_name + '_lighting.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_lighting.blend'
-        elif task_type == 'rendering':
-            if entity_sq_name == None:
-                file_name = entity_name + '_lighting.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_lighting.blend'
-        elif task_type == 'previz':
-            if entity_sq_name == None:
-                file_name = entity_name + '_layout.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_layout.blend'
-        elif task_type == 'layout':
-            if entity_sq_name == None:
-                file_name = entity_name + '_layout.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_layout.blend'
-        elif task_type == 'anim':
-            if entity_sq_name == None:
-                file_name = entity_name + '_anim.blend'
-            else:
-                file_name = entity_sq_name + '_' + entity_name + '_anim.blend'
-        else:
-            file_name = entity_name + '.blend'
+        task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
+        task_file_path = task['full_working_file_path']
+        file_name = os.path.basename(task_file_path)
 
         row = self.layout
-        row.label(text = 'FILE:  ' + file_name)
-        # if len(status_name) == 0:
-        #     row.label(text = 'STATUS:  NO STATUS SELECTED')
-        # else:
-        #     row.label(text = 'STATUS:  ' + status_name[0]['short_name'])
-        
-        if len(current_status) == 0:
-            status_label = 'select status'
-        else:
-            status_label = current_status[0]
-        row.menu("NAGATO_MT_StatusList", text= status_label)
+        row.label(text = f'file name: {file_name}')
+
+        row.prop(self, "status")
         row.prop(self, "comment")
         row.prop(self, "preview_path")
-        row.prop(self, "render_type")
+        # row.prop(self, "render_preview")
+        # row.prop(self, "render_type")
 
     def execute(self, context):
         # scene = context.scene
+        print(self.status)
+        # return{'FINISHED'}
         try:
+            status = gazu.task.get_task_status_by_short_name(self.status)
             task_list_index = bpy.context.scene.tasks_idx
             task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
+
+            if self.render_preview:
+                if task['task_type_name'].lower() in {'modeling'}:
+                    bpy.ops.render.opengl()
+                    profile_path = bpy.utils.user_resource('CONFIG', 'nagato', create=True)
+                    render_path = os.path.join(profile_path, 'render', 'render.png')
+                    # render = tempfile.NamedTemporaryFile(prefix='nagato', delete=True)
+                    bpy.data.images['Render Result'].save_render(render_path)
+
+
             if self.preview_path == '':
-                gazu.task.add_comment(task['id'], status_name[0], self.comment)
+                gazu.task.add_comment(task['id'], status, self.comment)
+            if self.render_preview:
+                comment = gazu.task.add_comment(task['id'], status, self.comment, attachments=[render_path])
+                gazu.task.add_preview(task['id'], comment, render_path)
+
             elif os.path.isfile(self.preview_path):
-                comment = gazu.task.add_comment(task['id'], status_name[0], self.comment, attachments=[self.preview_path])
+                comment = gazu.task.add_comment(task['id'], status, self.comment, attachments=[self.preview_path])
                 gazu.task.add_preview(task['id'], comment, self.preview_path)
             else:
                 self.report({'WARNING'}, "preview file do not exist")
                 return{'FINISHED'}
-            # if status_name[0]['short_name'] == 'wfa':
-            #     bpy.ops.nagato.publish()
-            displayed_tasks[task_list_index][1] = status_name[0]['short_name']
-            task['task_status_short_name'] = status_name[0]['short_name']
+            displayed_tasks[task_list_index][1] = status['short_name']
+            task['task_status_short_name'] = status['short_name']
             bpy.context.scene.update_tag()
             bpy.app.handlers.depsgraph_update_pre.append(update_list)
             self.report({'INFO'}, "status updated")
@@ -812,16 +777,6 @@ class NAGATO_OT_Setting(Operator):
         return{'FINISHED'}
 
 ######################################### Menu ################################################################################
-class NAGATO_MT_StatusList(Menu):
-    bl_label = 'select_status'
-    bl_idname = "NAGATO_MT_StatusList"
-    
-    def draw(self, context):
-        for s in status:
-            layout = self.layout
-            layout.operator('nagato.setstatus', text= s).stat= s
-
-
 class NAGATO_MT_Projects(Menu):
     bl_label = 'select project'
     bl_idname = "NAGATO_MT_Projects"
@@ -858,8 +813,8 @@ classes = [
         NAGATO_OT_project_open_in_browser,
         NAGATO_OT_Projects,
         NAGATO_MT_Projects,
-        NAGATO_OT_SetStatus,
-        NAGATO_MT_StatusList,
+        # NAGATO_OT_SetStatus,
+        # NAGATO_MT_StatusList,
         NAGATO_OT_GetDependencies,
         NAGATO_OT_UpdateStatus,
         NAGATO_OT_GetRefImg,
