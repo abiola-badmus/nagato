@@ -3,9 +3,12 @@ from . import gazu
 import nagato.kitsu
 import nagato.asset_browser
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty)
+from bpy.props import (StringProperty, IntProperty, EnumProperty)
 import os
 from . import nagato_icon
+from . import profile
+
+NagatoProfile = profile.NagatoProfile
 
 
 class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
@@ -273,14 +276,131 @@ class NAGATO_PT_SequencerPanel(SequencerButtonsPanel, bpy.types.Panel):
                
 
 ############################ Property groups #####################################################
+class MyTasks(PropertyGroup):
+    tasks_idx: IntProperty()
+    tasks: StringProperty()
+    tasks_status: StringProperty()
+    file_status: StringProperty()
+    task_id: StringProperty()
+    # click: BoolProperty(default=False, update=double_click)
+
 class Revision(PropertyGroup):
     revision: StringProperty()
     message: StringProperty()
     author: StringProperty()
     date: StringProperty()
 
-#################### mapping lists into column #################################
-class Revision_UL_list(bpy.types.UIList):
+#################### UI_Lists #################################
+class TASKS_UL_list(bpy.types.UIList):
+    comment: StringProperty(
+        name = '',
+        default = 'Add a comment',
+        description = 'type your comment'
+        )
+
+    preview_path: StringProperty(
+        name = 'add preview',
+        default = '',
+        description = 'path to preview file'
+        )
+    status: EnumProperty(
+        items={
+            ('todo', 'todo', 'set task status to todo'),
+            ('wip', 'wip', 'set task status to work in progress'),
+            ('wfa', 'wfa', 'set task status to waiting for approver')},
+        default='wip',
+        name= "",
+        description="update task status",
+        )
+    
+
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            active_task_type = NagatoProfile.active_task_type
+            active_task_id = NagatoProfile.lastest_openfile['task_id']
+            active_task_file = NagatoProfile.lastest_openfile['file_path']
+            if active_task_type == None:
+                task_icon='BLENDER'
+            elif item.task_id == active_task_id:
+                task_icon='REC'
+            elif active_task_type.lower() in {'modeling'}:
+                task_icon='CUBE'
+            elif active_task_type.lower() in {'shading', 'texturing'}:
+                task_icon='SHADING_RENDERED'
+            elif active_task_type.lower() in {'lighting'}:
+                task_icon='OUTLINER_DATA_LIGHT'
+            elif active_task_type.lower() in {'anim', 'animation'}:
+                task_icon='ARMATURE_DATA'
+            elif active_task_type.lower() in {'fx'}:
+                task_icon='SHADERFX'
+            elif active_task_type.lower() in {'rigging'}:
+                task_icon='BONE_DATA'
+            elif active_task_type.lower() in {'layout'}:
+                task_icon='MOD_ARRAY'
+            else:
+                task_icon='BLENDER'
+
+            split = layout.split(factor= 0.7, align=True)
+            # split.prop(item, 'click',icon = task_icon, text=item.tasks, emboss=False, translate=False)
+            split.label(text = item.tasks, icon = task_icon)
+            split.label(text = item.tasks_status)
+            if item.file_status == 'not_existing':
+                split.label(text = '', icon = 'ERROR')
+            elif item.file_status == 'normal':
+                split.label(text = '', icon_value = nagato_icon.icon('NormalIcon'))
+            elif item.file_status == 'modified':
+                split.label(text = '', icon_value = nagato_icon.icon('ModifiedIcon'))
+            elif item.file_status == 'conflicted':
+                split.label(text = '', icon_value = nagato_icon.icon('ConflictIcon'))
+            elif item.file_status == 'unversioned':
+                split.label(text = '', icon_value = nagato_icon.icon('UnversionedIcon'))
+            elif item.file_status == 'added':
+                split.label(text = '', icon_value = nagato_icon.icon('AddedIcon'))
+            elif item.file_status == 'missing':
+                split.label(text = '', icon = 'ERROR')
+            elif item.file_status == 'deleted':
+                split.label(text = '', icon_value = nagato_icon.icon('DeletedIcon'))
+        elif self.layout_type in {'GRID'}:
+            pass
+
+    def filter_items(self, context, data, propname):
+        items = getattr(data, propname)
+        # print('csdffffffffffffffffffff', items)
+        filtered = []
+        ordered = []
+
+        filtered = [self.bitflag_filter_item] * len(items)
+        # for i in items:
+        #     print(i.tasks)
+        helpers = bpy.types.UI_UL_list
+        filtered = helpers.filter_items_by_name(
+            self.filter_name, 
+            self.bitflag_filter_item, 
+            items, "tasks", reverse=False
+            )
+        # filtered[0] &= ~self.bitflag_filter_item
+        return filtered, ordered
+
+    def draw_filter(self, context, layout):
+        layout.separator()
+        col = layout.column(align=True)
+        row = col.row(align=True)
+        row.prop(self, 'filter_name', text='', icon='VIEWZOOM')
+        row.prop(self, 'use_filter_invert', text='', icon='ARROW_LEFTRIGHT')
+        layout.separator()
+        layout.prop(context.scene, "comment")
+        col = layout.column(align=True)
+        row = col.row()
+        row.alignment = 'LEFT'
+        row.prop(context.scene, "status")
+        # layout.prop(self, "preview_path")
+        # context.window_manager.preview_path
+        row.alignment = 'EXPAND'
+        row.prop(context.window_manager, "preview_path")
+        layout.operator('nagato.post_comment')
+
+
+class REVISIONS_UL_list(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             split = layout.split(factor= 0.1, align=True)
@@ -444,8 +564,10 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 
 # registration
 classes = [
+    MyTasks,
     Revision,
-    Revision_UL_list,
+    TASKS_UL_list,
+    REVISIONS_UL_list,
     NAGATO_PT_TaskManagementPanel,
     NAGATO_PT_AssetBrowserPanel,
     NAGATO_PT_SequencerPanel,
@@ -454,11 +576,24 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+    bpy.types.Scene.tasks = bpy.props.CollectionProperty(type=MyTasks)
+    bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
     bpy.types.Scene.show_description = bpy.props.BoolProperty(name='description', default=False)
     bpy.types.Scene.show_history = bpy.props.BoolProperty(name='file history', default=False)
 
     bpy.types.Scene.revisions = bpy.props.CollectionProperty(type=Revision)
     bpy.types.Scene.revisions_idx = bpy.props.IntProperty(default=0)
+    bpy.types.WindowManager.preview_path = StringProperty(name="Preview",subtype='FILE_PATH',default="")
+    bpy.types.Scene.comment = StringProperty(name="comment",default = '',description = 'type your comment')
+    bpy.types.Scene.status = EnumProperty(
+                                    items={
+                                        ('todo', 'todo', 'set task status to todo'),
+                                        ('wip', 'wip', 'set task status to work in progress'),
+                                        ('wfa', 'wfa', 'set task status to waiting for approver')},
+                                    default='wip',
+                                    name= "",
+                                    description="update task status",
+                                    )
 
     bpy.context.preferences.addons['nagato'].preferences.reset_messages()   
 

@@ -148,83 +148,6 @@ def task_file_directory(task_type, blend_file_path, active_project):
             # directory = f'{blend_file_path}_{task_type}.blend'
             # file_map_parser.set('file_map', task_type, task_type)
 
-############################ Property groups #####################################################
-class MyTasks(PropertyGroup):
-    tasks_idx: IntProperty()
-    tasks: StringProperty()
-    tasks_status: StringProperty()
-    file_status: StringProperty()
-    task_id: StringProperty()
-    # click: BoolProperty(default=False, update=double_click)
-
-#################### mapping lists into column #################################
-class TASKS_UL_list(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            active_task_type = NagatoProfile.active_task_type
-            active_task_id = NagatoProfile.lastest_openfile['task_id']
-            active_task_file = NagatoProfile.lastest_openfile['file_path']
-            if active_task_type == None:
-                task_icon='BLENDER'
-            elif item.task_id == active_task_id:
-                task_icon='REC'
-            elif active_task_type.lower() in {'modeling'}:
-                task_icon='CUBE'
-            elif active_task_type.lower() in {'shading', 'texturing'}:
-                task_icon='SHADING_RENDERED'
-            elif active_task_type.lower() in {'lighting'}:
-                task_icon='OUTLINER_DATA_LIGHT'
-            elif active_task_type.lower() in {'anim', 'animation'}:
-                task_icon='ARMATURE_DATA'
-            elif active_task_type.lower() in {'fx'}:
-                task_icon='SHADERFX'
-            elif active_task_type.lower() in {'rigging'}:
-                task_icon='BONE_DATA'
-            elif active_task_type.lower() in {'layout'}:
-                task_icon='MOD_ARRAY'
-            else:
-                task_icon='BLENDER'
-
-            split = layout.split(factor= 0.7, align=True)
-            # split.prop(item, 'click',icon = task_icon, text=item.tasks, emboss=False, translate=False)
-            split.label(text = item.tasks, icon = task_icon)
-            split.label(text = item.tasks_status)
-            if item.file_status == 'not_existing':
-                split.label(text = '', icon = 'ERROR')
-            elif item.file_status == 'normal':
-                split.label(text = '', icon_value = nagato_icon.icon('NormalIcon'))
-            elif item.file_status == 'modified':
-                split.label(text = '', icon_value = nagato_icon.icon('ModifiedIcon'))
-            elif item.file_status == 'conflicted':
-                split.label(text = '', icon_value = nagato_icon.icon('ConflictIcon'))
-            elif item.file_status == 'unversioned':
-                split.label(text = '', icon_value = nagato_icon.icon('UnversionedIcon'))
-            elif item.file_status == 'added':
-                split.label(text = '', icon_value = nagato_icon.icon('AddedIcon'))
-            elif item.file_status == 'missing':
-                split.label(text = '', icon = 'ERROR')
-            elif item.file_status == 'deleted':
-                split.label(text = '', icon_value = nagato_icon.icon('DeletedIcon'))
-        elif self.layout_type in {'GRID'}:
-            pass
-
-    def filter_items(self, context, data, propname):
-        items = getattr(data, propname)
-        # print('csdffffffffffffffffffff', items)
-        filtered = []
-        ordered = []
-
-        filtered = [self.bitflag_filter_item] * len(items)
-        # for i in items:
-        #     print(i.tasks)
-        helpers = bpy.types.UI_UL_list
-        filtered = helpers.filter_items_by_name(
-            self.filter_name, 
-            self.bitflag_filter_item, 
-            items, "tasks", reverse=False
-            )
-        # filtered[0] &= ~self.bitflag_filter_item
-        return filtered, ordered
 ############## Operators #######################################
 class NAGATO_OT_SetHost(Operator):
     bl_label = 'Set Host'
@@ -623,7 +546,7 @@ class NAGATO_OT_UpdateStatus(Operator):
 
             if self.preview_path == '':
                 gazu.task.add_comment(task['id'], status, self.comment)
-            if self.render_preview:
+            elif self.render_preview:
                 comment = gazu.task.add_comment(task['id'], status, self.comment, attachments=[render_path])
                 gazu.task.add_preview(task['id'], comment, render_path)
 
@@ -640,6 +563,37 @@ class NAGATO_OT_UpdateStatus(Operator):
             self.report({'INFO'}, "status updated")
         except IndexError:
             self.report({'WARNING'}, "No status selected.")
+        return{'FINISHED'}
+
+
+class NAGATO_OT_PostComment(Operator):
+    bl_label = 'post comment'
+    bl_idname = 'nagato.post_comment'
+    bl_description = 'post comment'    
+    
+    def execute(self, context):
+        status = gazu.task.get_task_status_by_short_name(context.scene.status)
+        task_list_index = bpy.context.scene.tasks_idx
+        task = NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]
+        preview = bpy.path.abspath(context.window_manager.preview_path)
+        print(preview)
+        print(context.scene.comment)
+        if preview == '':
+            gazu.task.add_comment(task['id'], status, context.scene.comment)
+        elif os.path.isfile(preview):
+            comment = gazu.task.add_comment(task['id'], status, context.scene.comment, attachments=[preview])
+            gazu.task.add_preview(task['id'], comment, preview)
+        else:
+            self.report({'WARNING'}, "preview file do not exist")
+            return{'FINISHED'}
+        displayed_tasks[task_list_index][1] = status['short_name']
+        task['task_status_short_name'] = status['short_name']
+        context.window_manager.preview_path = ''
+        context.scene.comment = ''
+
+        bpy.context.scene.update_tag()
+        bpy.app.handlers.depsgraph_update_pre.append(update_list)
+        self.report({'INFO'}, "status updated")
         return{'FINISHED'}
 
 
@@ -822,8 +776,8 @@ classes = [
         NAGATO_OT_Login,
         NAGATO_OT_Logout,
         NAGATO_OT_Refresh,
-        MyTasks,
-        TASKS_UL_list,
+        # MyTasks,
+        # TASKS_UL_list,
         NAGATO_MT_FilterTask,
         NAGATO_OT_Filter,
         NAGATO_OT_OpenFile,
@@ -835,6 +789,7 @@ classes = [
         # NAGATO_MT_StatusList,
         NAGATO_OT_GetDependencies,
         NAGATO_OT_UpdateStatus,
+        NAGATO_OT_PostComment,
         NAGATO_OT_GetRefImg,
         OBJECT_OT_NagatoSetFileTree,
         NAGATO_OT_Setting,
@@ -865,8 +820,6 @@ def register():
 
     for cls in classes:
         bpy.utils.register_class(cls)   
-    bpy.types.Scene.tasks = bpy.props.CollectionProperty(type=MyTasks)
-    bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
 
     bpy.app.handlers.depsgraph_update_pre.append(update_list)
     bpy.app.handlers.save_post.append(update_current_file_data)
