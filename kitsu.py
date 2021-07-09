@@ -29,6 +29,7 @@ displayed_tasks = []
 
 ########################### FUNCTIONS ################################ 
 def update_ui_list(displayed_tasks, tasks, active_project, active_task_type):
+    '''updates the state of all displayed files'''
     displayed_tasks.clear()
     for file in tasks[active_project][active_task_type]:
         #TODO add file svn status
