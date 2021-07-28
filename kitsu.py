@@ -70,12 +70,13 @@ def create_main_collection(dummy):
 @persistent
 def update_current_file_data(dummy):
     # bpy.app.handlers.save_pre.remove(update_current_file_data)
-    update_ui_list(
-        displayed_tasks=displayed_tasks,
-        tasks=NagatoProfile.tasks,
-        active_project=NagatoProfile.active_project['name'],
-        active_task_type=NagatoProfile.active_task_type
-    )
+    if NagatoProfile.active_project and NagatoProfile.active_task_type:
+        update_ui_list(
+            displayed_tasks=displayed_tasks,
+            tasks=NagatoProfile.tasks,
+            active_project=NagatoProfile.active_project['name'],
+            active_task_type=NagatoProfile.active_task_type
+        )
 
 def update_list(scene):
     # bpy.app.handlers.depsgraph_update_pre.remove(update_list)
@@ -465,7 +466,7 @@ class NAGATO_OT_Submit_shot_to_kitsu(Operator):
 
         return {"FINISHED"}
 
-
+# deprecated
 class NAGATO_OT_UpdateStatus(Operator):
     #TODO add sending preview and attactments to kitsu
     bl_label = 'update status'
@@ -789,7 +790,7 @@ classes = [
         # NAGATO_OT_SetStatus,
         # NAGATO_MT_StatusList,
         NAGATO_OT_GetDependencies,
-        NAGATO_OT_UpdateStatus,
+        # NAGATO_OT_UpdateStatus,
         NAGATO_OT_PostComment,
         NAGATO_OT_GetRefImg,
         OBJECT_OT_NagatoSetFileTree,

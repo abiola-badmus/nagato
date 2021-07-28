@@ -135,49 +135,48 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
         
         ######### task list ######################################
         row = layout.row()
-        row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=7)
+        row.template_list("TASKS_UL_list", "", context.scene, "tasks", context.scene, "tasks_idx", rows=5)
         col = row.column()
         col.operator("nagato.open", icon_value = nagato_icon.icon('open_file'), text="")
         col.enabled = text == "Task file"
-        col.operator("nagato.update_status", icon='OUTLINER_DATA_GP_LAYER', text="")
+        col.operator('nagato.revision_log', icon_value = nagato_icon.icon('version_history'), text='')
+        # col.operator("nagato.update_status", icon='OUTLINER_DATA_GP_LAYER', text="")
         col.separator()
         col.menu("NAGATO_MT_ProjectFiles", icon="DOWNARROW_HLT", text="")
         col.separator()
         col.operator('nagato.publish_selected', icon_value = nagato_icon.icon('publish_file'), text='')
         col.operator('nagato.update_selected', icon_value = nagato_icon.icon('update_file'), text='')
-        col.operator('nagato.revision_log', icon_value = nagato_icon.icon('version_history'), text='')
 
         
         #lists the amount of task in selected category
         layout.prop(context.scene, 'tasks')
-         
-        #TODO file and revison info
+        
         ########## task description ####################
-        scene = context.scene
-        row = layout.row(align=True)
-        row.alignment = 'LEFT'
-        if scene.show_description:
-            row.prop(scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
-        else:
-            row.prop(scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
-        if scene.show_description:
-            for a in  bpy.context.screen.areas:
-                if a.type == "PROPERTIES":
-                    wrap_width = a.width/5.93
-            row = layout.row(align=True)
-            box = row.box()
-            import textwrap
-            try:
-                active_project = nagato.kitsu.NagatoProfile.active_project['name']
-                active_task_type = nagato.kitsu.NagatoProfile.active_task_type
-                description = nagato.kitsu.NagatoProfile.tasks[active_project][active_task_type][task_list_index]['entity_description']
-            except (TypeError, KeyError, IndexError):
-                description = 'None'
-            wrapped_description = textwrap.wrap(description, wrap_width)
-            for text in wrapped_description:
-                box.label(text=text)
+        # scene = context.scene
+        # row = layout.row(align=True)
+        # row.alignment = 'LEFT'
+        # if scene.show_description:
+        #     row.prop(scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
+        # else:
+        #     row.prop(scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
+        # if scene.show_description:
+        #     for a in  bpy.context.screen.areas:
+        #         if a.type == "PROPERTIES":
+        #             wrap_width = a.width/5.93
+        #     row = layout.row(align=True)
+        #     box = row.box()
+        #     import textwrap
+        #     try:
+        #         active_project = nagato.kitsu.NagatoProfile.active_project['name']
+        #         active_task_type = nagato.kitsu.NagatoProfile.active_task_type
+        #         description = nagato.kitsu.NagatoProfile.tasks[active_project][active_task_type][task_list_index]['entity_description']
+        #     except (TypeError, KeyError, IndexError):
+        #         description = 'None'
+        #     wrapped_description = textwrap.wrap(description, wrap_width)
+        #     for text in wrapped_description:
+        #         box.label(text=text)
+        ############################################################
                 
-        layout.separator_spacer()
         layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')
         # mixer buttons
         box = layout.box()
@@ -398,6 +397,30 @@ class TASKS_UL_list(bpy.types.UIList):
         row.alignment = 'EXPAND'
         row.prop(context.window_manager, "preview_path")
         layout.operator('nagato.post_comment')
+        ########## task description ####################
+        task_list_index = bpy.context.scene.tasks_idx
+        row = layout.row(align=True)
+        row.alignment = 'LEFT'
+        if context.scene.show_description:
+            row.prop(context.scene, "show_description", icon="DOWNARROW_HLT", text="task description", emboss=False)
+        else:
+            row.prop(context.scene, "show_description", icon="RIGHTARROW", text="task description", emboss=False)
+        if context.scene.show_description:
+            for a in  bpy.context.screen.areas:
+                if a.type == "PROPERTIES":
+                    wrap_width = a.width/5.93
+            row = layout.row(align=True)
+            box = row.box()
+            import textwrap
+            try:
+                active_project = nagato.kitsu.NagatoProfile.active_project['name']
+                active_task_type = nagato.kitsu.NagatoProfile.active_task_type
+                description = nagato.kitsu.NagatoProfile.tasks[active_project][active_task_type][task_list_index]['entity_description']
+            except (TypeError, KeyError, IndexError):
+                description = 'None'
+            wrapped_description = textwrap.wrap(description, wrap_width)
+            for text in wrapped_description:
+                box.label(text=text)
 
 
 class REVISIONS_UL_list(bpy.types.UIList):

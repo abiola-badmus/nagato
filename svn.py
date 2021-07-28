@@ -689,6 +689,13 @@ class Nagato_OT_CheckOut(Operator):
                 try:
                     if client.is_url(repo_url):
                         client.checkout(repo_url, file_path)
+                        if NagatoProfile.active_project and NagatoProfile.active_task_type:
+                            update_ui_list(
+                                displayed_tasks=nagato.kitsu.displayed_tasks,
+                                tasks=NagatoProfile.tasks,
+                                active_project=NagatoProfile.active_project['name'],
+                                active_task_type=NagatoProfile.active_task_type
+                                )
                         self.report({'INFO'}, "project files downloaded")
                     else:
                         self.report({'INFO'}, "SVN url invalid")
@@ -699,6 +706,13 @@ class Nagato_OT_CheckOut(Operator):
                 try:
                     if client.is_url(repo_url):
                         client.checkout(repo_url, file_path)
+                        if NagatoProfile.active_project and NagatoProfile.active_task_type:
+                            update_ui_list(
+                                displayed_tasks=nagato.kitsu.displayed_tasks,
+                                tasks=NagatoProfile.tasks,
+                                active_project=NagatoProfile.active_project['name'],
+                                active_task_type=NagatoProfile.active_task_type
+                                )
                         self.report({'INFO'}, "project files downloaded")
                     else:
                         os.removedirs(file_path)
