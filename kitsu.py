@@ -7,24 +7,17 @@ from . import gazu
 from . import profile
 from .gazu.exception import NotAuthenticatedException, ParameterException, MethodNotAllowedException, RouteNotFoundException, ServerErrorException
 from requests.exceptions import MissingSchema, InvalidSchema, ConnectionError
-from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty, BoolProperty, EnumProperty)
+from bpy.types import (Operator, Menu)
+from bpy.props import (StringProperty, BoolProperty, EnumProperty)
 from bpy.app.handlers import persistent
-from configparser import ConfigParser, NoOptionError
-import shutil
 import re
 from . import pysvn
-from . import nagato_icon
-import tempfile
 svn_client = pysvn.Client()
 
 NagatoProfile = profile.NagatoProfile
-# time_queue = [0, 3]
+task_file_directory = NagatoProfile.task_file_directory
 
 displayed_tasks = []
-# status = ['wip', 'todo', 'wfa']
-# status_name = []
-# current_status = []
 
 
 ########################### FUNCTIONS ################################ 
@@ -93,62 +86,6 @@ def update_list(scene):
         colection.file_status = file_status
         colection.task_id = task_id
         colection.tasks_idx = i
-
-def double_click(self, context):
-    bpy.context.scene.tasks_idx = self.tasks_idx
-    time_queue.pop(0)
-    time_queue.append(time.time())
-    if time_queue[1] - time_queue[0] <= 0.3:
-        bpy.ops.nagato.open()
-        print('yes')
-    else:
-        print('no')
-
-def write_config(file_directory, config_parser):
-    '''
-        write data from a configuration parser
-        to file
-    '''
-    with open(file_directory, 'w') as f:
-        config_parser.write(f)
-
-def load_config(file_directory, config_parser):
-    '''
-        load data from a configuration file 
-        into a configuration parser instance
-    '''
-    with open(file_directory, 'r') as f:
-        data = f.read()
-    config_parser.read_string(data)
-
-def task_file_directory(task_type, blend_file_path, active_project):
-    file_map_parser = ConfigParser()
-    mount_point = active_project['file_tree']['working']['mountpoint']
-    root = active_project['file_tree']['working']['root']
-    project_folder = os.path.expanduser(os.path.join(mount_point, root, active_project['name'].replace(' ','_').lower()))
-    if os.path.isdir(project_folder):
-        file_map_dir = os.path.join(project_folder, '.conf/file_map')
-        load_config(file_map_dir, file_map_parser)
-
-        if not os.path.isdir(project_folder):
-            return 'Project not downloaded'
-        if not os.path.isfile(file_map_dir):
-            return 'task file map does not exist'
-
-        try:
-            task_type_map = file_map_parser.get('file_map', task_type).lower()
-            if task_type_map == 'base':
-                directory = f'{blend_file_path}.blend'
-                return directory
-            elif task_type_map == 'none':
-                pass
-            else:
-                directory = f'{blend_file_path}_{task_type_map}.blend'
-                return directory
-        except NoOptionError:
-            return None
-            # directory = f'{blend_file_path}_{task_type}.blend'
-            # file_map_parser.set('file_map', task_type, task_type)
 
 ############## Operators #######################################
 class NAGATO_OT_SetHost(Operator):

@@ -7,12 +7,11 @@ from bpy.types import (
     PropertyGroup,
     Menu
 )
-from bpy.props import (StringProperty, IntProperty, EnumProperty)
+from bpy.props import (StringProperty)
 from . import pysvn
 from . import gazu
 from . import nagato_icon
-from nagato.kitsu import NagatoProfile, load_config, task_file_directory, update_list, update_ui_list
-from configparser import ConfigParser, NoOptionError
+from nagato.kitsu import NagatoProfile, update_list, update_ui_list
 import nagato.kitsu
 
 ########## operators ################################
