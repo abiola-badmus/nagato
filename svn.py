@@ -8,7 +8,16 @@ from bpy.types import (
     Menu
 )
 from bpy.props import (StringProperty)
-from . import pysvn
+
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    from . import pysvn_linux as pysvn
+elif platform == "darwin":
+    pass
+#     from . import pysvn_osx as pysvn
+elif platform == "win32":
+    from . import pysvn_win as pysvn
+
 from . import gazu
 from . import nagato_icon
 from nagato.kitsu import NagatoProfile, update_list, update_ui_list
@@ -389,7 +398,7 @@ class NAGATO_OT_RevisionLog(Operator):
 
             row = self.layout
             row.label(text ='No.' + ' '*10 + 'User' +' '*30 +'Date Published')
-            row.template_list("Revision_UL_list", "", context.scene, "revisions", context.scene, "revisions_idx", rows=6)
+            row.template_list("REVISIONS_UL_list", "", context.scene, "revisions", context.scene, "revisions_idx", rows=6)
 
             row.label(text = f'{revision["message"]}')
             row.operator('nagato.update_to_revision')
@@ -643,13 +652,6 @@ class Nagato_OT_CheckOut(Operator):
     bl_idname = 'nagato.check_out'
     bl_description = 'checkout project files'
     
-    
-    remote_bool: bpy.props.BoolProperty(
-        name = 'Remote',
-        default = False,
-        description = 'is host remote'
-    )
-    
     username: StringProperty(
         name = 'Username',
         default = 'username',
@@ -674,10 +676,7 @@ class Nagato_OT_CheckOut(Operator):
     def execute(self, context):
         project_info = NagatoProfile.active_project
         try:
-            if self.remote_bool is False:
-                repo_url = project_info['data']['local_svn_url']
-            else:
-                repo_url = project_info['data']['remote_svn_url']
+            repo_url = project_info['data']['svn_url']
             root = project_info['file_tree']['working']['root']
             mount_point = project_info['file_tree']['working']['mountpoint']
             file_path = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_').lower()))
@@ -825,16 +824,10 @@ class Nagato_OT_SvnUrl(Operator):
     bl_idname = 'nagato.svn_url'
     bl_description = 'set svn url'
     
-    local_url: StringProperty(
-        name = 'Local Url',
+    url: StringProperty(
+        name = 'SVN Url',
         default = '',
-        description = 'input svn local url for project'
-        )
-
-    remote_url: StringProperty(
-        name = 'Remote Url',
-        default = '',
-        description = 'input svn remote url for project'
+        description = 'input svn url for project'
         )
 
 
@@ -848,8 +841,8 @@ class Nagato_OT_SvnUrl(Operator):
     def execute(self, context):
         project = gazu.project.get_project_by_name(NagatoProfile.active_project['name'])
         project_id = project['id']
-        gazu.project.update_project_data(project_id, {'local_svn_url': self.local_url})
-        gazu.project.update_project_data(project_id, {'remote_svn_url': self.remote_url})
+        gazu.project.update_project_data(project_id, {'svn_url': self.url})
+        bpy.ops.nagato.refresh()
         return{'FINISHED'}
 
 

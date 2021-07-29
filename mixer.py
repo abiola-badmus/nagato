@@ -11,7 +11,14 @@ from bpy.props import (StringProperty)
 import os
 import subprocess
 import xml.etree.ElementTree as ET
-from . import pysvn
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    from . import pysvn_linux as pysvn
+elif platform == "darwin":
+    pass
+#     from . import pysvn_osx as pysvn
+elif platform == "win32":
+    from . import pysvn_win as pysvn
 from . import gazu
 from . import kitsu, nagato_icon
 from nagato.kitsu import NagatoProfile

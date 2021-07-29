@@ -116,8 +116,8 @@ try:
     add_dll_handle = os.add_dll_directory( os.path.dirname( __file__ ) )
 
     sys.path.append(os.getcwd())
-    import pysvn._pysvn_3_9
-    _pysvn = pysvn._pysvn_3_9
+    import pysvn_win._pysvn_3_9
+    _pysvn = pysvn_win._pysvn_3_9
 
     os.environ['PATH'] = old_path
     del os

@@ -1,7 +1,5 @@
-# from typing import Sequence
 import bpy
 import os
-import time
 import json
 from . import gazu
 from . import profile
@@ -11,7 +9,14 @@ from bpy.types import (Operator, Menu)
 from bpy.props import (StringProperty, BoolProperty, EnumProperty)
 from bpy.app.handlers import persistent
 import re
-from . import pysvn
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    from . import pysvn_linux as pysvn
+elif platform == "darwin":
+    pass
+#     from . import pysvn_osx as pysvn
+elif platform == "win32":
+    from . import pysvn_win as pysvn
 svn_client = pysvn.Client()
 
 NagatoProfile = profile.NagatoProfile
@@ -110,12 +115,6 @@ class NAGATO_OT_Login(Operator):
     bl_idname = 'nagato.login'
     bl_description = 'login to kitsu'
 
-    remote_bool: BoolProperty(
-        name = 'Remote',
-        default = False,
-        description = 'is host url remote'
-    )
-    
     user_name: StringProperty(
         name = 'User Name',
         default = 'username',
@@ -141,10 +140,7 @@ class NAGATO_OT_Login(Operator):
         # scene = context.scene
         
         try:
-            if self.remote_bool == False:
-                host = context.preferences.addons['nagato'].preferences.local_host_url
-            else:
-                host = context.preferences.addons['nagato'].preferences.remote_host_url
+            host = context.preferences.addons['nagato'].preferences.host_url
             bpy.ops.nagato.set_host(host=host)
             token = gazu.log_in(self.user_name, self.password)
             NagatoProfile.host = host
@@ -309,7 +305,7 @@ class NAGATO_OT_OpenFile(Operator):
         entity_id = active_project_tasks[NagatoProfile.active_task_type][task_list_index]["entity_id"]
         task_type = NagatoProfile.tasks[NagatoProfile.active_project['name']]\
             [NagatoProfile.active_task_type][task_list_index]['task_type_name']
-        directory = task_file_directory(task_type, blend_file_path, active_project)
+        directory = task_file_directory(task_type.lower(), blend_file_path, active_project)
         if directory == 'Project not downloaded':
             self.report({'WARNING'}, 'Project not downloaded, download project file')
             return{'FINISHED'}
@@ -510,6 +506,16 @@ class NAGATO_OT_PostComment(Operator):
     bl_idname = 'nagato.post_comment'
     bl_description = 'post comment'    
     
+    @classmethod
+    def poll(cls, context):
+        try:
+            task_list_index = bpy.context.scene.tasks_idx
+            NagatoProfile.tasks[NagatoProfile.active_project['name']][NagatoProfile.active_task_type][task_list_index]['id']
+            status = 1
+        except:
+            status = 0
+        return status == 1
+
     def execute(self, context):
         status = gazu.task.get_task_status_by_short_name(context.scene.status)
         task_list_index = bpy.context.scene.tasks_idx

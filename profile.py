@@ -1,4 +1,3 @@
-# from kitsu import task_file_directory
 import os
 try:
     import bpy

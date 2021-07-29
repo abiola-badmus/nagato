@@ -49,7 +49,7 @@ class NAGATO_PT_VersionControlPanel(bpy.types.Panel):
 
 class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
-    bl_label = "Task Management"
+    bl_label = "Nagato"
     bl_idname = "SASORI_PT_ui"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -441,14 +441,9 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     # when defining this in a submodule of a python package.
     bl_idname = 'nagato'
     user = os.environ.get('homepath') #.replace("\\","/")
-    local_host_url: StringProperty(
-        name="Local url of server",
+    host_url: StringProperty(
+        name="url of server",
         default='http://myAddress/api',
-    )
-
-    remote_host_url: StringProperty(
-        name="Remote url of server",
-        default='',
     )
 
     error_message: StringProperty(
@@ -537,11 +532,10 @@ class NagatoGenesis(bpy.types.AddonPreferences):
 
         box = layout.box()
         # layout.label(text="Nagato Preferences")
-        box.prop(self, "local_host_url")
-        box.prop(self, "remote_host_url")
+        box.prop(self, "host_url")
+        box.operator('nagato.login')
         # box.prop(self, "project_mount_point")
         layout = self.layout
-        layout.operator('nagato.login')
         box = layout.box()
         box.prop(self, "mixer_luncher")
         box.prop(self, "mixer_pref_path")
@@ -564,25 +558,33 @@ class NagatoGenesis(bpy.types.AddonPreferences):
             row.operator('nagato.svn_url')
 
             # set kitsu file tree
-            box = layout.box()
-            box.label(text="mountpoint")
-            box.prop(self, "mountpoint")
-            box.label(text="root")
-            box.prop(self, "root")
-            box_2 = box.box()
-            box_2.label(text="folder path:")
-            box_2.prop(self, "asset_path")
-            box_2.prop(self, "shot_path")
-            # box_2.prop(self, "sequence_path")
-            # box_2.prop(self, "scenes_path")
-            box_3 = box.box()
-            box_3.label(text="file name:")
-            box_3.prop(self, "asset_name")
-            box_3.prop(self, "shot_name")
-            box_3.prop(self, "sequence_name")
-            # box_3.prop(self, "scenes_name")
-            # layout = self.layout
-            layout.operator('nagato.set_file_tree', text='apply file tree')
+            row = layout.row(align=True)
+            row.alignment = 'LEFT'
+            if context.scene.show_file_tree:
+                row.prop(context.scene, "show_file_tree", icon="DOWNARROW_HLT", text="file tree setting", emboss=False)
+            else:
+                row.prop(context.scene, "show_file_tree", icon="RIGHTARROW", text="file tree setting", emboss=False)
+            if context.scene.show_file_tree:
+                box = layout.box()
+                box.label(text="mountpoint")
+                box.prop(self, "mountpoint")
+                box.label(text="root")
+                box.prop(self, "root")
+                box_2 = box.box()
+                box_2.label(text="folder path:")
+                box_2.prop(self, "asset_path")
+                box_2.prop(self, "shot_path")
+                # box_2.prop(self, "sequence_path")
+                # box_2.prop(self, "scenes_path")
+                box_3 = box.box()
+                box_3.label(text="file name:")
+                box_3.prop(self, "asset_name")
+                box_3.prop(self, "shot_name")
+                box_3.prop(self, "sequence_name")
+                # box_3.prop(self, "scenes_name")
+                # layout = self.layout
+                layout.operator('nagato.set_file_tree', text='apply file tree')
+                
 
 
 # registration
@@ -592,7 +594,7 @@ classes = [
     TASKS_UL_list,
     REVISIONS_UL_list,
     NAGATO_PT_TaskManagementPanel,
-    NAGATO_PT_AssetBrowserPanel,
+    # NAGATO_PT_AssetBrowserPanel,
     NAGATO_PT_SequencerPanel,
     NagatoGenesis,
 ]
@@ -602,6 +604,7 @@ def register():
     bpy.types.Scene.tasks = bpy.props.CollectionProperty(type=MyTasks)
     bpy.types.Scene.tasks_idx = bpy.props.IntProperty(default=0)
     bpy.types.Scene.show_description = bpy.props.BoolProperty(name='description', default=False)
+    bpy.types.Scene.show_file_tree = bpy.props.BoolProperty(name='show file tree', default=False)
     bpy.types.Scene.show_history = bpy.props.BoolProperty(name='file history', default=False)
 
     bpy.types.Scene.revisions = bpy.props.CollectionProperty(type=Revision)
