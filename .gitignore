@@ -5,3 +5,4 @@ dist
 test*
 *.pyc
 .vscode/settings.json
+.VSCodeCounter/*

@@ -277,6 +277,7 @@ class NAGATO_OT_OpenFile(Operator):
     bl_description = 'opens active selected task file'
 
     save_bool: bpy.props.BoolProperty()
+    load_ui: bpy.props.BoolProperty()
 
     @classmethod
     def poll(cls, context):
@@ -292,7 +293,8 @@ class NAGATO_OT_OpenFile(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        row = self.layout
+        row = self.layout.row()
+        row.prop(self, "load_ui", text="LOAD UI")
         row.prop(self, "save_bool", text="SAVE FILE")
     
     def execute(self, context):
@@ -317,7 +319,7 @@ class NAGATO_OT_OpenFile(Operator):
             try:
                 if self.save_bool == True:
                     bpy.ops.wm.save_mainfile()
-                bpy.ops.wm.open_mainfile(filepath= directory, load_ui=False)
+                bpy.ops.wm.open_mainfile(filepath= directory, load_ui=self.load_ui)
                 NagatoProfile.lastest_openfile['file_path'] = bpy.context.blend_data.filepath
                 NagatoProfile.lastest_openfile['task_id'] = active_task_id
                 scene = bpy.data.scenes.get('main')

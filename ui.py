@@ -3,7 +3,7 @@ from . import gazu
 import nagato.kitsu
 import nagato.asset_browser
 from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty, EnumProperty)
+from bpy.props import (StringProperty, IntProperty, EnumProperty, BoolProperty)
 import os
 from . import nagato_icon
 from . import profile
@@ -179,10 +179,11 @@ class NAGATO_PT_TaskManagementPanel(bpy.types.Panel):
                 
         layout.operator('nagato.get_dependencies', icon= 'LINKED', text= 'Get Dependencies')
         # mixer buttons
-        box = layout.box()
-        row = box.row()
-        row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
-        row.operator('nagato.import_textures', text= 'Import Mixer Textures')
+        if context.preferences.addons['nagato'].preferences.use_mixer:
+            box = layout.box()
+            row = box.row()
+            row.operator('nagato.lunch_mixer', text= 'Send to Mixer')
+            row.operator('nagato.import_textures', text= 'Import Mixer Textures')
         
         ########### update status ######################33
         # row = layout.row()
@@ -290,6 +291,7 @@ class Revision(PropertyGroup):
     date: StringProperty()
 
 #################### UI_Lists #################################
+use_filter = True
 class TASKS_UL_list(bpy.types.UIList):
     comment: StringProperty(
         name = '',
@@ -314,6 +316,10 @@ class TASKS_UL_list(bpy.types.UIList):
     
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        global use_filter
+        if use_filter == True:
+            self.use_filter_show = True
+            use_filter = False
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             active_task_type = NagatoProfile.active_task_type
             active_task_id = NagatoProfile.lastest_openfile['task_id']
@@ -511,8 +517,9 @@ class NagatoGenesis(bpy.types.AddonPreferences):
     )
     mixer_luncher: StringProperty(
         name="Mixer Launcher path",
-        default=f'C:/Users/Itadori/Eaxum/Software/Quixel/QuixelMixer-2021.1.1/Quixel Mixer.exe',
+        default=f'',
     )
+    use_mixer: BoolProperty(default=False, name='')
 
     def reset_messages(self):
         self.ok_message = ''
@@ -536,9 +543,14 @@ class NagatoGenesis(bpy.types.AddonPreferences):
         box.operator('nagato.login')
         # box.prop(self, "project_mount_point")
         layout = self.layout
-        box = layout.box()
-        box.prop(self, "mixer_luncher")
-        box.prop(self, "mixer_pref_path")
+        row = layout.row()
+        row.alignment = 'LEFT'
+        row.prop(self, "use_mixer")
+        row.label(text = "use_mixer")
+        if self.use_mixer:
+            box = layout.box()
+            box.prop(self, "mixer_luncher")
+            box.prop(self, "mixer_pref_path")
 
         ####### admin user settings  #####################
         if nagato.kitsu.NagatoProfile.user and nagato.kitsu.NagatoProfile.user['role'] == 'admin':
