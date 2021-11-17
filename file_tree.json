@@ -18,10 +18,10 @@
         }
     },
     "output": {
-        "mountpoint": "/simple",
-        "root": "productions/export",
+        "mountpoint": "~",
+        "root": "render",
         "folder_path": {
-            "shot": "<Project>/shots/<Sequence>/<Shot>/<OutputType>",
+            "shot": "<Project>/<Sequence>_<Shot>/<OutputType>",
             "asset": "<Project>/assets/<AssetType>/<Asset>/<OutputType>",
             "sequence": "<Project>/sequences/<Sequence>/<OutputType>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<OutputType>",

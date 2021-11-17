@@ -5,6 +5,8 @@ import urllib
 
 from .encoder import CustomJSONEncoder
 
+from .__version__ import __version__
+
 from .exception import (
     TooBigFileException,
     NotAuthenticatedException,
@@ -18,9 +20,10 @@ from .exception import (
 
 
 class KitsuClient(object):
-    def __init__(self, host):
+    def __init__(self, host, ssl_verify=True):
         self.tokens = {"access_token": "", "refresh_token": ""}
         self.session = requests.Session()
+        self.session.verify = ssl_verify
         self.host = host
         self.event_host = host
 
@@ -39,7 +42,7 @@ try:
     )
     host = "http://gazu.change.serverhost/api"
     default_client = create_client(host)
-except:
+except Exception:
     print("Warning, running in setup mode!")
 
 
@@ -50,7 +53,7 @@ def host_is_up(client=default_client):
     """
     try:
         response = client.session.head(client.host)
-    except:
+    except Exception:
         return False
     return response.status_code == 200
 
@@ -127,10 +130,10 @@ def make_auth_header(client=default_client):
     Returns:
         Headers required to authenticate.
     """
+    headers = {"User-Agent": "CGWire Gazu %s" % __version__}
     if "access_token" in client.tokens:
-        return {"Authorization": "Bearer %s" % client.tokens["access_token"]}
-    else:
-        return {}
+        headers["Authorization"] = "Bearer %s" % client.tokens["access_token"]
+    return headers
 
 
 def url_path_join(*items):
@@ -184,7 +187,6 @@ def get(path, json_response=True, params=None, client=default_client):
         The request result.
     """
     path = build_path_with_params(path, params)
-
     response = client.session.get(
         get_full_url(path, client=client),
         headers=make_auth_header(client=client)
@@ -247,8 +249,8 @@ def delete(path, params=None, client=default_client):
 
 def check_status(request, path):
     """
-    Raise an exception related to status code, if the status code does not match
-    a success code. Print error message when it's relevant.
+    Raise an exception related to status code, if the status code does not
+    match a success code. Print error message when it's relevant.
 
     Args:
         request (Request): The request to validate.
@@ -293,7 +295,7 @@ def check_status(request, path):
             print("A server error occured!\n")
             print("Server stacktrace:\n%s" % stacktrace)
             print("Error message:\n%s\n" % message)
-        except:
+        except Exception:
             print(request.text)
         raise ServerErrorException(path)
     return status_code
@@ -328,7 +330,8 @@ def fetch_first(path, params=None, client=default_client):
 
 def fetch_one(model_name, id, client=default_client):
     """
-    Function dedicated at targeting routes that returns a single model instance.
+    Function dedicated at targeting routes that returns a single model
+    instance.
 
     Args:
         model_name (str): Model type name.
@@ -344,10 +347,33 @@ def create(model_name, data, client=default_client):
     """
     Create an entry for given model and data.
 
+    Args:
+        model (str): The model type involved
+        data (str): The data to use for creation
+
     Returns:
         dict: Created entry
     """
     return post(url_path_join("data", model_name), data, client=client)
+
+
+def update(model_name, model_id, data, client=default_client):
+    """
+    Update an entry for given model, id and data.
+
+    Args:
+        model (str): The model type involved
+        id (str): The target model id
+        data (str): The data to update
+
+    Returns:
+        dict: Updated entry
+    """
+    return put(
+        url_path_join("data", model_name, model_id),
+        data,
+        client=client
+    )
 
 
 def upload(path, file_path, data={}, extra_files=[], client=default_client):
@@ -405,6 +431,7 @@ def download(path, file_path, client=default_client):
     ) as response:
         with open(file_path, "wb") as target_file:
             shutil.copyfileobj(response.raw, target_file)
+        return response
 
 
 def get_file_data_from_url(url, full=False, client=default_client):
@@ -437,7 +464,7 @@ def get_api_version(client=default_client):
     Returns:
         str: Current version of the API.
     """
-    return get("", client)["version"]
+    return get("", client=client)["version"]
 
 
 def get_current_user(client=default_client):
@@ -445,4 +472,4 @@ def get_current_user(client=default_client):
     Returns:
         dict: User database information for user linked to auth tokens.
     """
-    return get("auth/authenticated", client)["user"]
+    return get("auth/authenticated", client=client)["user"]

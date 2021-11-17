@@ -1,13 +1,13 @@
 import bpy
 import os
-from .gazu.exception import NotAuthenticatedException
-from bpy.types import (Operator, PropertyGroup, CollectionProperty, Menu)
-from bpy.props import (StringProperty, IntProperty, BoolProperty)
+from nagato.gazu.exception import NotAuthenticatedException
+from bpy.types import Operator
+from bpy.props import StringProperty
 from nagato.kitsu import NagatoProfile
 assets_lib = dict()
 displayed_assets = []
 active_asset_type = []
-
+#TODO slugify names in asset browser
 def update_asset_list(scene):
     try:
         scene.assets.clear()
@@ -17,37 +17,6 @@ def update_asset_list(scene):
     for asset in displayed_assets:  
         colection = scene.assets.add()   
         colection.asset = asset
-
-
-class Asset(PropertyGroup):
-     asset: StringProperty()
-     multi_select: BoolProperty(default=False)
-     
-
-class ASSETS_UL_list(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        if self.layout_type in {'DEFAULT', 'COMPACT'}: 
-            # split = layout.split(factor= 0.6, align=True) 
-            if len(active_asset_type) == 0:
-                layout.label(text = item.asset, icon='BLENDER')
-            elif active_asset_type[0].lower() in {'props'}:
-                layout.label(text = item.asset, icon='MATCUBE')
-            elif active_asset_type[0].lower() in {'chars', 'characters'}:
-                layout.label(text = item.asset, icon='MONKEY')
-            elif active_asset_type[0].lower() in {'envs', 'environment'}:
-                layout.label(text = item.asset, icon='WORLD_DATA')
-            else:
-                layout.label(text = item.asset, icon='BLENDER')
-
-            if item.multi_select:
-                layout.prop(item, 'multi_select', text='', icon = 'CHECKBOX_HLT', emboss=False, translate=False)
-            else:
-                layout.prop(item, 'multi_select', text='', icon = 'CHECKBOX_DEHLT', emboss=False, translate=False)
-
-            # split.prop(text = item.multi_select)
-        elif self.layout_type in {'GRID'}:
-            pass
-
 
 class NAGATO_OT_AssetRefresh(Operator):
     bl_label = 'Asset Refresh'
@@ -202,43 +171,14 @@ class NAGATO_OT_AppendSelectedAsset(Operator):
         return {'FINISHED'}
 
 
-######################################### Menu ################################################################################
-class NAGATO_MT_AssetType(Menu):
-    bl_label = 'select asset type'
-    bl_idname = "NAGATO_MT_AssetType"
-
-    def draw(self, context):
-        mount_point = NagatoProfile.active_project['file_tree']['working']['mountpoint']
-        root = NagatoProfile.active_project['file_tree']['working']['root']
-        project_folder = os.path.expanduser(os.path.join(mount_point, root, NagatoProfile.active_project['name'].replace(' ', '_')))
-        project_lib_folder = os.path.join(project_folder, 'lib')
-        asset_types = os.listdir(project_lib_folder)
-        # asset_types = ['chars', 'envs', 'props']
-        for i in asset_types:
-            layout = self.layout
-            layout.operator('nagato.assets', text= i).asset_type = i
-
-
-class NAGATO_MT_AssetFiles(Menu):
-    bl_label = 'project files operators'
-    bl_idname = "NAGATO_MT_AssetFiles"
-    
-    def draw(self, context):
-        layout = self.layout
-        layout.operator('nagato.link_selected_asset', text= 'link selected assets')
-        layout.operator('nagato.append_asset', text= 'append selected assets')
 ############### all classes ####################    
 classes = [
-        Asset,
-        ASSETS_UL_list,
         NAGATO_OT_AssetRefresh,
-        NAGATO_MT_AssetType,
         NAGATO_OT_Assets,
         NAGATO_OT_LinkAsset,
         NAGATO_OT_LinkSelectedAsset,
         NAGATO_OT_AppendAsset,
         NAGATO_OT_AppendSelectedAsset,
-        NAGATO_MT_AssetFiles
         ]  
     
     
@@ -246,14 +186,7 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-        
-    bpy.types.Scene.assets = bpy.props.CollectionProperty(type=Asset)
-    bpy.types.Scene.assets_idx = bpy.props.IntProperty(default=0)
 
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
-        
-        
-    del bpy.types.Scene.assets
-    del bpy.types.Scene.assets_idx

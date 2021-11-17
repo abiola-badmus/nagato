@@ -4,6 +4,7 @@ try:
 except ModuleNotFoundError:
     pass
 from . import gazu
+import re
 
 # Set/created upon register.
 profile_path = ''
@@ -61,6 +62,41 @@ class NagatoProfile():
         }
 
         cls.save_profile_data(jsonfile)
+    
+    def slugify(text,separator='-', lowercase=True):
+        """
+        Make a slug from the given text.
+        :param text (str): initial text
+        :param separator (str): separator between words
+        :param lowercase (bool): activate case sensitivity by setting it to False
+        :return (str):
+        """
+        DEFAULT_SEPARATOR = '-'
+        QUOTE_PATTERN = re.compile(r'[\']+')
+        ALLOWED_CHARS_PATTERN = re.compile(r'[^-a-z0-9]+')
+        DUPLICATE_DASH_PATTERN = re.compile(r'-{2,}')
+        NUMBERS_PATTERN = re.compile(r'(?<=\d),(?=\d)')
+        # replace quotes with dashes - pre-process
+        text = QUOTE_PATTERN.sub(separator, text)
+
+        # make the text lowercase (optional)
+        if lowercase:
+            text = text.lower()
+
+        # remove generated quotes -- post-process
+        text = QUOTE_PATTERN.sub('', text)
+
+        # cleanup numbers
+        text = NUMBERS_PATTERN.sub('', text)
+
+        text = re.sub(ALLOWED_CHARS_PATTERN, DEFAULT_SEPARATOR, text)
+
+        # remove redundant
+        text = DUPLICATE_DASH_PATTERN.sub(DEFAULT_SEPARATOR, text).strip(DEFAULT_SEPARATOR)
+        if separator != DEFAULT_SEPARATOR:
+            text = text.replace(DEFAULT_SEPARATOR, separator)
+
+        return text
 
     def task_file_directory(task_type: str, blend_file_path: str, project: dict):
         '''
@@ -71,7 +107,13 @@ class NagatoProfile():
         except KeyError:
             file_map = {'shading':'base','concept':'none','modeling':'base','rigging':'base','storyboard':'none','layout':'layout',
                         'previz':'layout','animation':'anim','lighting':'lighting','fx':'fx','rendering':'lighting','compositing':'comp',}
-        task_type_map = file_map[task_type].lower()
+        if task_type.lower() in {'editing', 'edit'}:
+            task_type_map = 'base'
+        else:
+            try:
+                task_type_map = file_map[task_type.lower()]
+            except KeyError:
+                task_type_map = 'none'
         if task_type_map == 'base':
             directory = f'{blend_file_path}.blend'
             return directory
@@ -91,7 +133,20 @@ class NagatoProfile():
             task_type = task['task_type_name'].lower()
             task['working_file_path'] = gazu.files.build_working_file_path(task['id'])
             blend_file_path = os.path.expanduser(task['working_file_path'])
-            task['full_working_file_path'] = cls.task_file_directory(task_type, blend_file_path, project)
+
+            if task_type.lower() in {'editing', 'edit'}:
+                project_file_name = cls.slugify(project['name'], separator="_")
+                if task['episode_name'] == None:
+                    base_file_directory = os.path.join(project['file_tree']['working']['mountpoint'], \
+                    project['file_tree']['working']['root'],project_file_name,'edit','edit.blend')
+                else:
+                    episode_name = cls.slugify(task['episode_name'], separator="_")
+                    base_file_directory = os.path.join(project['file_tree']['working']['mountpoint'], \
+                        project['file_tree']['working']['root'],project_file_name,'edit',f"{episode_name}_edit.blend")
+                directory = os.path.expanduser(base_file_directory)
+                task['full_working_file_path'] = directory
+            else:
+                task['full_working_file_path'] = cls.task_file_directory(task_type, blend_file_path, project)
 
         cls.tasks = cls.structure_task(tasks)
         cls.active_project = None

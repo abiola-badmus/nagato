@@ -1,30 +1,14 @@
 import bpy
-from bpy.types import (
-    Operator,
-    Panel,
-    AddonPreferences,
-    PropertyGroup,
-    Menu
-)
-from bpy.props import (StringProperty)
+from bpy.types import Operator
+from bpy.props import StringProperty
 # import winapps
 import os
 import subprocess
 import xml.etree.ElementTree as ET
-from sys import platform
-if platform == "linux" or platform == "linux2":
-    from . import pysvn_linux as pysvn
-elif platform == "darwin":
-    pass
-#     from . import pysvn_osx as pysvn
-elif platform == "win32":
-    from . import pysvn_win as pysvn
-from . import gazu
-from . import kitsu, nagato_icon
-from nagato.kitsu import NagatoProfile
+from nagato.profile import NagatoProfile
 import shutil
 
-
+#TODO slugify names in mixer package
 def process_exists(process_name):
     call = 'TASKLIST', '/FI', f'imagename eq {process_name}'
     # use buildin check_output right away
@@ -35,7 +19,6 @@ def process_exists(process_name):
     return last_line.lower().startswith(process_name.lower())
 
 ########## operators ################################
-client = pysvn.Client()
 
 class NAGATO_OT_LunchMixer(Operator):
     bl_label = 'Add file to SVN'
@@ -48,8 +31,6 @@ class NAGATO_OT_LunchMixer(Operator):
 
 
     def execute(self, context):
-        # print(NagatoProfile.tasks)
-        # subprocess.run(["taskkill","/F","/IM","Quixel Mixer.exe"])
         if process_exists('Quixel Mixer.exe'):
             self.report({'ERROR_INVALID_CONTEXT'}, "Mixer opened, You have to close mixer to run this operation") 
             return {"CANCELLED"}
@@ -69,7 +50,7 @@ class NAGATO_OT_LunchMixer(Operator):
             mixer_mix_xml = os.path.join(mixer_mix, f"{file_name}.xml")
 
             os.makedirs(mixer_project, exist_ok=True)
-            mix_template_dir = os.path.join(os.path.dirname(__file__), 'mix_template')
+            mix_template_dir = os.path.dirname(__file__)
             if not os.path.isdir(mixer_mix):
                 shutil.copytree(mix_template_dir, mixer_mix)
             if not os.path.isfile(mixer_mix_xml):

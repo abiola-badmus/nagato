@@ -440,6 +440,19 @@ def remove_shot(shot, force=False, client=default):
     return raw.delete(path, params, client=client)
 
 
+def restore_shot(shot, client=default):
+    """
+    Restore given shot into database (uncancel it).
+
+    Args:
+        shot (dict / str): Shot to restore.
+    """
+    shot = normalize_model_parameter(shot)
+    path = "data/shots/%s" % shot["id"]
+    data = {"canceled": False}
+    return raw.put(path, data, client=client)
+
+
 def new_episode(project, name, client=default):
     """
     Create an episode for given project.
@@ -509,7 +522,10 @@ def remove_episode(episode, force=False, client=default):
     """
     episode = normalize_model_parameter(episode)
     path = "data/episodes/%s" % episode["id"]
-    return raw.delete(path, params={"force": force}, client=client)
+    params = {}
+    if force:
+        params = {"force": "true"}
+    return raw.delete(path, params=params, client=client)
 
 
 def remove_sequence(sequence, force=False, client=default):
@@ -521,7 +537,10 @@ def remove_sequence(sequence, force=False, client=default):
     """
     sequence = normalize_model_parameter(sequence)
     path = "data/sequences/%s" % sequence["id"]
-    return raw.delete(path, params={"force": force}, client=client)
+    params = {}
+    if force:
+        params = {"force": "true"}
+    return raw.delete(path, params=params, client=client)
 
 
 @cache
